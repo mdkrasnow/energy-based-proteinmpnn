@@ -1,0 +1,6 @@
+[submodule "proteinmpnn"]
+	path = proteinmpnn
+	url = https://github.com/dauparas/ProteinMPNN.git
+[submodule "ired"]
+	path = ired
+	url = https://github.com/yilundu/ired_code_release.git
