@@ -1,1 +1,130 @@
-./claude/work
+# Claude work directory
+.claude/work
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Machine Learning
+# Model checkpoints and weights
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.joblib
+*.h5
+*.hdf5
+*.model
+checkpoints/
+models/
+weights/
+*.safetensors
+
+# Data files
+data/
+datasets/
+*.npz
+*.npy
+*.csv
+*.tsv
+# Exclude data files but allow config
+data/**/*.json
+datasets/**/*.json
+*.jsonl
+# Keep small config/reference files
+!config/*.json
+!tests/fixtures/*.json
+!package.json
+
+# Security-sensitive files
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.env.*
+.env.local
+.env.*.local
+secrets.yaml
+secrets.yml
+credentials.*
+auth_config.*
+api_keys.*
+*.parquet
+*.feather
+*.pdb
+*.cif
+*.mmtf
+
+# Logs and outputs
+logs/
+outputs/
+results/
+experiments/
+runs/
+wandb/
+.wandb/
+.neptune/
+.comet/
+mlruns/
+.mlflow/
+# ML platform credentials
+.netrc
+.huggingface/token
+.kaggle/kaggle.json
+tensorboard_logs/
+*.log
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak

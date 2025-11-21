@@ -8,14 +8,21 @@ Based on the implementation plan and the summary of the proposal, I want you to 
 
 
 <specifications>
-Look at what we have completed so far in the @documentation/implementation-todo.md and the specifications of what should be completed in the @documentation/final-synthesis.md . You may also find the summary of what we are doing useful @documentation/summary_plan.md . Once you have completed this part and your review of it, update the implementation plan todo list with what was completed. if anything was completed that was not described in the implementation plan beforehand, update the implementation plan to include it as completed. note if there were sigificant challenges while implementing in the implementation plan.
+Look at what we have completed so far in the @documentation/implementation-todo.md and the specifications of what should be completed in the @documentation/implementation-plan.md.md . You may also find the summary of what we are doing useful @documentation/summary_plan.md . Once you have completed this part and your review of it, update the implementation plan todo list with what was completed. if anything was completed that was not described in the implementation plan beforehand, update the implementation plan to include it as completed. note if there were sigificant challenges while implementing in the implementation plan.
 </specifications>
 
 
 <step-to-complete>
-### 1.1 Project Structure & Environment
+### 1.3 Sequence Representation
+- [ ] **Implement `hybrid/models/sequence_repr.py`**:
+- [ ] **Test sequence representation**:
+### 1.4 Basic Energy Model
+- [ ] **Implement `hybrid/models/energy_head.py`**:
+- [ ] **Test energy model**:
 
 </step-to-complete>
+
+Small note: Tests you write will be run on macos, but the actual implementation will be run on our GPU cluster; don't worry about MPS issues running on macos
 
 
 ---
@@ -28,9 +35,10 @@ Check the changes made, which complete the following step of our implementation 
 <step>
 
 
+
+
 </step>
 
-
-@documentation/implementation_todo.md
-@documentation/implementation_plan.md
+@documentation/implementation-todo.md
+@documentation/implementation-plan.md
 </task>
