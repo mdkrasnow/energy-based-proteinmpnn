@@ -172,24 +172,62 @@ Successfully implemented core evaluation framework for energy-based protein desi
 ## Phase 3: Iterative Optimization (Weeks 9-12)
 
 ### 3.1 IRED-Style Optimization Engine
-- [ ] **Implement `hybrid/inference/ired_optimizer.py`**:
-  - [ ] Create `IREDSequenceOptimizer` class with multi-landscape support
-  - [ ] Implement `optimize_sequence` with annealed energy landscapes
-  - [ ] Add gradient-based optimization loop with Adam optimizer
-  - [ ] Include convergence monitoring and early stopping
-  - [ ] Add noise injection for exploration in early landscapes
+- [x] **Implement `hybrid/inference/ired_optimizer.py`**:
+  - [x] Create `IREDSequenceOptimizer` class with multi-landscape support
+  - [x] Implement `optimize_sequence` with annealed energy landscapes
+  - [x] Add gradient-based optimization loop with Adam optimizer
+  - [x] Include convergence monitoring and early stopping
+  - [x] Add noise injection for exploration in early landscapes
 
-- [ ] **Adaptive computation features**:
-  - [ ] Implement `adaptive_optimization` with difficulty assessment
-  - [ ] Add automatic step allocation based on convergence quality
-  - [ ] Include multiple restart strategies for failed optimizations
-  - [ ] Add trajectory logging and analysis capabilities
+- [x] **Adaptive computation features**:
+  - [x] Implement `adaptive_optimization` with difficulty assessment
+  - [x] Add automatic step allocation based on convergence quality
+  - [x] Include multiple restart strategies for failed optimizations
+  - [x] Add trajectory logging and analysis capabilities
 
-- [ ] **Test optimization engine**:
-  - [ ] Verify optimization converges to discrete sequences
-  - [ ] Test adaptive step allocation on different difficulty levels
-  - [ ] Validate gradient flow and numerical stability
-  - [ ] Check memory usage and computational efficiency
+- [x] **Test optimization engine**:
+  - [x] Verify optimization converges to discrete sequences
+  - [x] Test adaptive step allocation on different difficulty levels
+  - [x] Validate gradient flow and numerical stability
+  - [x] Check memory usage and computational efficiency
+
+**Status**: COMPLETE (Phase 3.1)
+
+Successfully implemented IRED-style sequence optimizer in `hybrid/inference/ired_optimizer.py` (~920 lines) with comprehensive testing in `hybrid/inference/test_ired_optimizer.py` (10 tests, all passing).
+
+**Core Features Implemented**:
+1. **IREDSequenceOptimizer Class** - Main optimizer with single/multi-landscape support, flexible configuration via OptimizationConfig dataclass
+2. **optimize_sequence** - Core optimization loop with annealed energy landscapes (E₁→E_T), Adam optimizer on sequence logits, temperature-based annealing through sequence_repr, noise injection in early landscapes (decay factor 0.5), logit clamping for numerical stability
+3. **Convergence Monitoring** - Energy variance tracking over sliding window, gradient norm monitoring, patience-based early stopping (configurable thresholds), min_steps_per_landscape enforcement, robust convergence determination
+4. **adaptive_optimization** - Difficulty assessment via energy variance, dynamic step allocation (initial 50% budget, extend if needed), continues optimization from current state, trajectory merging for full history
+5. **optimize_with_restarts** - Multiple random restarts (configurable count), three initialization strategies (random, uniform, biased), returns best result by energy, memory-efficient (no trajectory storage for restarts)
+6. **Trajectory Analysis** - analyze_trajectory utility with comprehensive metrics, energy statistics (initial, final, min, max, improvement %), gradient statistics (max, final, mean, std), convergence rate estimation, landscape-wise analysis, monotonicity checking
+
+**Integration & Testing**:
+- Seamless integration with Phase 1 components (ProteinMPNNBackboneEncoder, EnergyHead, ContinuousSequenceRepr)
+- Comprehensive test suite (10 tests): basic optimization, convergence monitoring, adaptive allocation, restart strategies, gradient flow, numerical stability, memory efficiency, trajectory analysis, multi-landscape, configuration
+- All tests pass on macOS (as specified)
+- Integration test confirms end-to-end functionality
+
+**Numerical Stability & Safety**:
+- Gradient clipping (configurable norm, default 1.0)
+- Logit clamping ([-10, 10] range)
+- NaN/Inf detection with graceful abort
+- Input validation (dimensions, values, types)
+- Memory efficiency (sample-based trajectory storage, optional trajectory logging)
+
+**Design Decisions**:
+- Single energy model support (current Phase 2): Replicates model across landscapes for temperature annealing
+- Multi-model support (future Phase 3.2): Ready for separately trained landscape-specific models E_1, ..., E_T
+- Extensible architecture: Clean separation of concerns, modular helper methods, comprehensive configuration
+- Device management: Automatic device placement with warnings for mixed-device inputs
+
+**Challenges Encountered**:
+- Gradient flow verification: Initially appeared broken with simple sum() loss, but confirmed working with realistic energy-based losses (straight-through estimator requires meaningful loss function)
+- Convergence criteria: Balanced between premature stopping and unnecessary computation via multi-criteria approach (energy variance + gradient norms + patience)
+- Memory vs detail tradeoff: Trajectory logging stores only first sequence sample per step rather than full batch to prevent memory growth with long optimizations
+
+**Ready for Phase 3.2**: Multi-landscape training to create sequence of energy models E_1, ..., E_T with progressive sharpening.
 
 ### 3.2 Multi-Landscape Training
 - [ ] **Implement landscape training `hybrid/training/train_landscapes.py`**:

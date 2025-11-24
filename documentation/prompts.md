@@ -14,19 +14,28 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 
 <step-to-complete>
 
-### 2.3 Basic Evaluation Framework
-- [ ] **Implement `hybrid/evaluation/eval_energy.py`**:
-  - [ ] Create evaluation script for energy model performance
-  - [ ] Add energy ranking accuracy metrics (native > random)
-  - [ ] Implement correlation analysis with Rosetta/AlphaFold scores
-  - [ ] Include sequence property analysis (composition, secondary structure)
-  - [ ] Add visualization for energy distributions and rankings
 
-- [ ] **Validation metrics**:
-  - [ ] Test evaluation on hold-out PDB structures
-  - [ ] Verify energy model generalizes to unseen backbones
-  - [ ] Compare energy rankings with physics-based baselines
-  - [ ] Generate evaluation reports and plots
+## Phase 3: Iterative Optimization (Weeks 9-12)
+
+### 3.1 IRED-Style Optimization Engine
+- [ ] **Implement `hybrid/inference/ired_optimizer.py`**:
+  - [ ] Create `IREDSequenceOptimizer` class with multi-landscape support
+  - [ ] Implement `optimize_sequence` with annealed energy landscapes
+  - [ ] Add gradient-based optimization loop with Adam optimizer
+  - [ ] Include convergence monitoring and early stopping
+  - [ ] Add noise injection for exploration in early landscapes
+
+- [ ] **Adaptive computation features**:
+  - [ ] Implement `adaptive_optimization` with difficulty assessment
+  - [ ] Add automatic step allocation based on convergence quality
+  - [ ] Include multiple restart strategies for failed optimizations
+  - [ ] Add trajectory logging and analysis capabilities
+
+- [ ] **Test optimization engine**:
+  - [ ] Verify optimization converges to discrete sequences
+  - [ ] Test adaptive step allocation on different difficulty levels
+  - [ ] Validate gradient flow and numerical stability
+  - [ ] Check memory usage and computational efficiency
 
 
 </step-to-complete>
@@ -44,20 +53,25 @@ Check the changes made, which complete the following step of our implementation 
 
 <step>
 
-### 2.3 Basic Evaluation Framework
-- [ ] **Implement `hybrid/evaluation/eval_energy.py`**:
-  - [ ] Create evaluation script for energy model performance
-  - [ ] Add energy ranking accuracy metrics (native > random)
-  - [ ] Implement correlation analysis with Rosetta/AlphaFold scores
-  - [ ] Include sequence property analysis (composition, secondary structure)
-  - [ ] Add visualization for energy distributions and rankings
+### 3.1 IRED-Style Optimization Engine
+- [ ] **Implement `hybrid/inference/ired_optimizer.py`**:
+  - [ ] Create `IREDSequenceOptimizer` class with multi-landscape support
+  - [ ] Implement `optimize_sequence` with annealed energy landscapes
+  - [ ] Add gradient-based optimization loop with Adam optimizer
+  - [ ] Include convergence monitoring and early stopping
+  - [ ] Add noise injection for exploration in early landscapes
 
-- [ ] **Validation metrics**:
-  - [ ] Test evaluation on hold-out PDB structures
-  - [ ] Verify energy model generalizes to unseen backbones
-  - [ ] Compare energy rankings with physics-based baselines
-  - [ ] Generate evaluation reports and plots
+- [ ] **Adaptive computation features**:
+  - [ ] Implement `adaptive_optimization` with difficulty assessment
+  - [ ] Add automatic step allocation based on convergence quality
+  - [ ] Include multiple restart strategies for failed optimizations
+  - [ ] Add trajectory logging and analysis capabilities
 
+- [ ] **Test optimization engine**:
+  - [ ] Verify optimization converges to discrete sequences
+  - [ ] Test adaptive step allocation on different difficulty levels
+  - [ ] Validate gradient flow and numerical stability
+  - [ ] Check memory usage and computational efficiency
 
 
 </step>

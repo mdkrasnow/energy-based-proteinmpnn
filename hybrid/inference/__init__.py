@@ -8,6 +8,10 @@ This module implements:
 - Multi-landscape energy minimization
 """
 
-# Inference imports will be added as components are implemented
-# from .ired_optimizer import IREDSequenceOptimizer
+# Inference imports
+from .ired_optimizer import IREDSequenceOptimizer, OptimizationConfig, OptimizationResult
+
+# Future imports (Phase 3.3)
 # from .design_pipeline import DesignPipeline
+
+__all__ = ['IREDSequenceOptimizer', 'OptimizationConfig', 'OptimizationResult']
