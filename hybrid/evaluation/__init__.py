@@ -1,18 +1,25 @@
 """
 Evaluation module for energy-based ProteinMPNN hybrid model.
 
-This module provides evaluation utilities for assessing model performance,
-including out-of-distribution detection and perplexity analysis.
+This module provides comprehensive evaluation utilities for assessing
+energy model performance, including ranking accuracy, correlation analysis,
+sequence properties, and visualizations.
 """
 
-from .ood_evaluation import (
-    OODEvaluator,
-    PerplexityAnalyzer,
-    SequenceDistributionAnalyzer
+from .eval_energy import (
+    EnergyModelEvaluator,
+    EnergyRankingEvaluator,
+    CorrelationAnalyzer,
+    SequencePropertyAnalyzer,
+    EnergyVisualizationGenerator,
+    BiophysicalHeuristics
 )
 
 __all__ = [
-    'OODEvaluator',
-    'PerplexityAnalyzer', 
-    'SequenceDistributionAnalyzer'
+    'EnergyModelEvaluator',
+    'EnergyRankingEvaluator',
+    'CorrelationAnalyzer',
+    'SequencePropertyAnalyzer',
+    'EnergyVisualizationGenerator',
+    'BiophysicalHeuristics'
 ]
