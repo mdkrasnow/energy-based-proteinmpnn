@@ -1,12 +1,12 @@
 ---
-description: Review uncommitted changes through multi-agent debate, produce actionable fix plan, and execute fixes safely
+description: Review uncommitted research code changes through multi-agent debate, produce actionable fix plan ensuring scientific correctness and robustness
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 model: claude-sonnet-4-5
 ---
 
-# Code Review with Multi-Agent Debate
+# Research Code Review with Multi-Agent Debate
 
-You are the orchestrator for a debate-driven code review system.
+You are the orchestrator for a debate-driven research code review system focused on scientific correctness, implementation fidelity, reproducibility, and robustness.
 
 ## Overview
 
@@ -78,19 +78,19 @@ mkdir -p .claude/work/review-debate/round-{1,2,3}
 
 ## Phase 2: Multi-Agent Debate
 
-Coordinate 4 specialized reviewers:
-- security-reviewer
-- correctness-reviewer
-- performance-reviewer
-- maintainability-reviewer
+Coordinate 4 specialized research-focused reviewers:
+- scientific-correctness-reviewer
+- implementation-fidelity-reviewer
+- reproducibility-reviewer
+- robustness-reviewer
 
 ### Round 1: Independent Analysis (Parallel)
 
 Invoke `code-reviewer` 4 times in parallel:
 
 **For each reviewer:**
-- reviewer_id: "[security|correctness|performance|maintainability]-reviewer"
-- focus: "[security|correctness|performance|maintainability]"
+- reviewer_id: "[scientific-correctness|implementation-fidelity|reproducibility|robustness]-reviewer"
+- focus: "[scientific-correctness|implementation-fidelity|reproducibility|robustness]"
 - round: 1
 - model: sonnet
 - critique_mode: "none"
@@ -196,27 +196,36 @@ If DEGRADED:
 
 ### Step 4.6: Final Report
 ```
-=== CODE REVIEW DEBATE & FIX SUMMARY ===
+=== RESEARCH CODE REVIEW DEBATE & FIX SUMMARY ===
 
 DIFF SCOPE: [strategy] - X files, Y lines
 
-DEBATE PROCESS:
-  ✓ Round 1: Independent analysis
-  ✓ Round 2: Cross-examination
-  ✓ Round 3: Prioritization
+RESEARCH-FOCUSED DEBATE PROCESS:
+  ✓ Round 1: Independent analysis (scientific correctness, implementation fidelity, reproducibility, robustness)
+  ✓ Round 2: Cross-examination (validation of research concerns)
+  ✓ Round 3: Prioritization (research impact assessment)
 
-FINDINGS: Critical X, High Y, Medium Z, Low W
+RESEARCH FINDINGS: Critical X, High Y, Medium Z, Low W
+  - Scientific Correctness Issues: X
+  - Implementation Fidelity Issues: Y
+  - Reproducibility Issues: Z
+  - Robustness Issues: W
 
 FIXES APPLIED: X changes across Y files
-  ✓ file:line - Fixed [issue]
+  ✓ file:line - Fixed [research-specific issue type]
 
 STATIC CHECKS:
   BEFORE: lint X, tsc Y
   AFTER:  lint A (-B), tsc C (-D)
 
-OUTCOME: [CLEAN|IMPROVED|DEGRADED|UNCHANGED]
+RESEARCH VALIDATION:
+  ✓ Algorithm implementation matches specifications
+  ✓ Reproducibility requirements addressed
+  ✓ Numerical stability validated
 
-NEXT STEPS: [context-appropriate guidance]
+OUTCOME: [RESEARCH-READY|IMPROVED|DEGRADED|UNCHANGED]
+
+NEXT STEPS: [research-appropriate validation and testing guidance]
 ```
 
 ---

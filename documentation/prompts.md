@@ -14,26 +14,19 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 
 <step-to-complete>
 
-### 2.2 Loss Functions & Training
-- [ ] **Implement `hybrid/training/losses.py`**:
-  - [ ] Create `ContrastiveLoss` with ranking and temperature terms
-  - [ ] Add margin-based loss for energy ranking (E_pos + margin < E_neg)
-  - [ ] Implement temperature-scaled contrastive loss
-  - [ ] Add regularization terms (entropy, smoothness)
-  - [ ] Include loss weighting for different negative types
+### 2.3 Basic Evaluation Framework
+- [ ] **Implement `hybrid/evaluation/eval_energy.py`**:
+  - [ ] Create evaluation script for energy model performance
+  - [ ] Add energy ranking accuracy metrics (native > random)
+  - [ ] Implement correlation analysis with Rosetta/AlphaFold scores
+  - [ ] Include sequence property analysis (composition, secondary structure)
+  - [ ] Add visualization for energy distributions and rankings
 
-- [ ] **Implement training loop `hybrid/training/train_energy.py`**:
-  - [ ] Create training script with proper argument parsing
-  - [ ] Add model initialization and checkpoint loading/saving
-  - [ ] Implement training loop with validation monitoring
-  - [ ] Add logging for loss curves and energy distributions
-  - [ ] Include early stopping and learning rate scheduling
-
-- [ ] **Training validation**:
-  - [ ] Test training loop on small dataset subset
-  - [ ] Verify loss decreases and energy rankings improve
-  - [ ] Monitor for training instabilities or divergence
-  - [ ] Validate checkpoint saving/loading functionality
+- [ ] **Validation metrics**:
+  - [ ] Test evaluation on hold-out PDB structures
+  - [ ] Verify energy model generalizes to unseen backbones
+  - [ ] Compare energy rankings with physics-based baselines
+  - [ ] Generate evaluation reports and plots
 
 
 </step-to-complete>
@@ -44,32 +37,27 @@ Small note: Tests you write will be run on macos, but the actual implementation 
 ---
 
 
+/commit-review
 
 <task>
 Check the changes made, which complete the following step of our implementation plan:
 
 <step>
 
-### 2.2 Loss Functions & Training
-- [ ] **Implement `hybrid/training/losses.py`**:
-  - [ ] Create `ContrastiveLoss` with ranking and temperature terms
-  - [ ] Add margin-based loss for energy ranking (E_pos + margin < E_neg)
-  - [ ] Implement temperature-scaled contrastive loss
-  - [ ] Add regularization terms (entropy, smoothness)
-  - [ ] Include loss weighting for different negative types
+### 2.3 Basic Evaluation Framework
+- [ ] **Implement `hybrid/evaluation/eval_energy.py`**:
+  - [ ] Create evaluation script for energy model performance
+  - [ ] Add energy ranking accuracy metrics (native > random)
+  - [ ] Implement correlation analysis with Rosetta/AlphaFold scores
+  - [ ] Include sequence property analysis (composition, secondary structure)
+  - [ ] Add visualization for energy distributions and rankings
 
-- [ ] **Implement training loop `hybrid/training/train_energy.py`**:
-  - [ ] Create training script with proper argument parsing
-  - [ ] Add model initialization and checkpoint loading/saving
-  - [ ] Implement training loop with validation monitoring
-  - [ ] Add logging for loss curves and energy distributions
-  - [ ] Include early stopping and learning rate scheduling
+- [ ] **Validation metrics**:
+  - [ ] Test evaluation on hold-out PDB structures
+  - [ ] Verify energy model generalizes to unseen backbones
+  - [ ] Compare energy rankings with physics-based baselines
+  - [ ] Generate evaluation reports and plots
 
-- [ ] **Training validation**:
-  - [ ] Test training loop on small dataset subset
-  - [ ] Verify loss decreases and energy rankings improve
-  - [ ] Monitor for training instabilities or divergence
-  - [ ] Validate checkpoint saving/loading functionality
 
 
 </step>

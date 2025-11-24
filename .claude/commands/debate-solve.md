@@ -1,13 +1,13 @@
 ---
-description: Solve a problem using multi-agent debate (MAD) to find the optimal solution through 3 rounds of parallel deliberation
-argument-hint: <problem-description>
+description: Solve a research problem using multi-agent debate (MAD) to find the optimal solution through 3 rounds of parallel deliberation focused on scientific rigor
+argument-hint: <research-problem-description>
 allowed-tools: Write, Read, SubAgent, Bash, Bash(cat:*), Touch, Echo
 model: claude-sonnet-4-5
 ---
 
-# Multi-Agent Debate Solver
+# Research Multi-Agent Debate Solver
 
-You are the orchestrator for a Multi-Agent Debate (MAD) system. Your job is to coordinate 3 solution agents through 3 rounds of debate to find the optimal solution to a problem.
+You are the orchestrator for a Multi-Agent Debate (MAD) system specialized for research problems. Your job is to coordinate 3 solution agents through 3 rounds of debate to find the optimal solution that balances simplicity, robustness, and maintainability for research applications.
 
 ## Input
 Problem to solve: "$ARGUMENTS"
@@ -35,9 +35,14 @@ mkdir -p .claude/work/debate/round-3
 Write the problem statement to `.claude/work/debate/problem.md`:
 
 ```markdown
-# Problem Statement
+# Research Problem Statement
 
 {user's problem description from $ARGUMENTS}
+
+## Research Context
+- Focus: Scientific correctness and reproducibility
+- Requirements: Implementation should match specifications and be verifiable
+- Constraints: Must balance simplicity, robustness, and maintainability
 
 ---
 Generated: {timestamp}
@@ -190,29 +195,35 @@ After synthesis completes:
 
 2. **Present to user:**
    ```markdown
-   # 🎯 Multi-Agent Debate Results
+   # 🔬 Research Multi-Agent Debate Results
 
-   After 3 rounds of debate with 3 solution agents, here is the optimal solution:
+   After 3 rounds of research-focused debate with 3 solution agents, here is the optimal solution balancing scientific rigor, simplicity, and practical implementation:
 
    {paste the Executive Summary section from final-synthesis.md}
 
    📄 **Full Solution Plan**: [View final-synthesis.md](computer:///.claude/work/debate/final-synthesis.md)
 
-   ## Debate Process
-   - ✅ Round 1: Independent generation (3 diverse perspectives)
-   - ✅ Round 2: Adversarial critique (identified weaknesses)
-   - ✅ Round 3: Cooperative synthesis (refined consensus)
+   ## Research-Focused Debate Process
+   - ✅ Round 1: Independent generation (simplicity, robustness, maintainability perspectives)
+   - ✅ Round 2: Adversarial critique (identified implementation challenges)
+   - ✅ Round 3: Cooperative synthesis (research-optimal consensus)
+
+   ## Key Research Considerations Addressed
+   - Scientific correctness and algorithm fidelity
+   - Reproducibility and experimental validation
+   - Implementation robustness and error handling
+   - Long-term maintainability for research workflows
 
    ## Debate Transcripts
-   You can review the full debate history:
+   You can review the full debate evolution:
    - [Round 1 Summary](computer:///.claude/work/debate/round-1/summary.md)
    - [Round 2 Summary](computer:///.claude/work/debate/round-2/summary.md)
    - [Round 3 Summary](computer:///.claude/work/debate/round-3/summary.md)
 
    Would you like me to:
-   1. Show the detailed debate transcript?
-   2. Explain any specific decision?
-   3. Proceed with implementing this solution?
+   1. Show the detailed perspective analysis?
+   2. Explain specific research considerations?
+   3. Proceed with implementing this research solution?
    ```
 
 ## Implementation Notes

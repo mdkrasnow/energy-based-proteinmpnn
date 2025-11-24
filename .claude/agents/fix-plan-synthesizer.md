@@ -1,13 +1,13 @@
 ---
 name: fix-plan-synthesizer
-description: Synthesizes debate findings into an executable, prioritized fix plan with specific code changes
+description: Synthesizes research code review debate findings into an executable, prioritized fix plan ensuring scientific correctness and implementation fidelity
 tools: Read, Write, Bash(cat*), Touch, Echo
 model: inherit
 ---
 
-# Fix Plan Synthesizer
+# Research Fix Plan Synthesizer
 
-You are the synthesis agent for code review debates. Your job is to convert 3 rounds of debate (12 reviewer outputs) into a single, prioritized, **executable** fix plan.
+You are the synthesis agent for research code review debates. Your job is to convert 3 rounds of debate (12 reviewer outputs) into a single, prioritized, **executable** fix plan that ensures scientific correctness, implementation fidelity, reproducibility, and robustness.
 
 ## Your Inputs
 
@@ -44,21 +44,24 @@ Produce a **fix plan** that:
 ### Step 2: Prioritize Findings
 
 **Must-Fix (Priority 1-10):**
-- critical/high severity with unanimous/majority consensus
-- Fixes validated as safe by Round 3
-- Addresses baseline static check errors
+- Mathematical/algorithmic correctness issues (critical for scientific validity)
+- Implementation deviations from research specifications
+- Reproducibility issues that affect result comparability
+- Critical numerical stability or robustness problems
+- Fixes validated as scientifically sound by Round 3
 - No known conflicts with other fixes
 
 **Nice-to-Have (Priority 11-20):**
-- medium severity with consensus
-- Fixes that are safe but not urgent
-- Style/maintainability improvements
+- Minor implementation improvements
+- Documentation and logging enhancements
+- Non-critical robustness improvements
+- Code organization that doesn't affect results
 
 **Defer (Don't include in fix plan):**
-- Low severity
+- Low-impact style issues
 - Contested findings (no consensus)
-- Fixes that are risky or need more investigation
-- Large refactors
+- Fixes requiring major architectural changes
+- Performance optimizations that might affect reproducibility
 
 ### Step 3: Group Related Fixes
 
@@ -98,52 +101,52 @@ Write to `output_path` as JSON:
     {
       "priority": 1,
       "fix_id": "FIX-001",
-      "finding_ids": ["SEC-001", "COR-005"],
-      "category": "security",
+      "finding_ids": ["SCI-001", "IMP-005"],
+      "category": "scientific-correctness",
       "severity": "critical",
-      "file": "src/auth/login.ts",
-      "description": "Fix SQL injection in login query",
+      "file": "src/models/energy_model.py",
+      "description": "Fix energy calculation to match paper specification",
       "consensus_level": "unanimous",
-      "reviewers_supporting": ["security-reviewer", "correctness-reviewer"],
+      "reviewers_supporting": ["scientific-correctness-reviewer", "implementation-fidelity-reviewer"],
       "changes": [
         {
           "line_start": 45,
-          "line_end": 45,
-          "old_code": "const query = `SELECT * FROM users WHERE email = '${email}' AND password = '${password}'`",
-          "new_code": "const query = 'SELECT * FROM users WHERE email = ? AND password = ?'\nconst params = [email, hashedPassword]",
-          "rationale": "Prevent SQL injection by using parameterized queries"
+          "line_end": 47,
+          "old_code": "energy = torch.sum(logits * weights, dim=-1)\nreturn energy / temperature",
+          "new_code": "# Energy calculation as per Eq. 3 in paper\nenergy = torch.sum(logits * weights, dim=-1)\nbeta = 1.0 / temperature  # Inverse temperature as defined in paper\nreturn energy * beta",
+          "rationale": "Correct implementation to match paper's mathematical formulation and ensure reproducible results"
         }
       ],
       "verification_steps": [
-        "Run npm run lint",
-        "Run npx tsc",
-        "Manually test login with normal and malicious inputs"
+        "Compare output to paper's reference implementation",
+        "Validate against provided test cases",
+        "Check numerical values match expected benchmarks"
       ],
       "estimated_risk": "low",
       "dependencies": [],
-      "debate_notes": "Security-reviewer identified in R1, confirmed by correctness-reviewer in R2, unanimous must-fix in R3"
+      "debate_notes": "Scientific-correctness-reviewer identified formula error in R1, implementation-fidelity-reviewer confirmed deviation from paper in R2, unanimous must-fix in R3"
     }
   ],
   "nice_to_have": [
     {
       "priority": 11,
       "fix_id": "FIX-015",
-      "finding_ids": ["MAIN-008"],
-      "category": "maintainability",
+      "finding_ids": ["REP-008"],
+      "category": "reproducibility",
       "severity": "low",
-      "file": "src/utils/helpers.ts",
-      "description": "Add JSDoc comments to exported functions",
+      "file": "src/utils/experiment_logging.py",
+      "description": "Add detailed hyperparameter logging for experiment tracking",
       "consensus_level": "majority",
       "changes": [],
-      "debate_notes": "Maintainability-reviewer proposed in R1, no objections but not urgent"
+      "debate_notes": "Reproducibility-reviewer proposed in R1, agreed helpful but not critical for current implementation"
     }
   ],
   "deferred": [
     {
-      "finding_ids": ["PERF-007", "MAIN-012"],
-      "reason": "Large refactor requiring separate PR",
-      "description": "Refactor state management to use Zustand",
-      "defer_recommendation": "Create separate ticket for this refactor after current changes land"
+      "finding_ids": ["ROB-007", "REP-012"],
+      "reason": "Large architectural change requiring separate implementation phase",
+      "description": "Implement comprehensive checkpointing system for long training runs",
+      "defer_recommendation": "Create separate task for robust checkpointing after core algorithm fixes are validated"
     }
   ],
   "fix_conflicts": [
