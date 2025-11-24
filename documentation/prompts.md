@@ -13,12 +13,28 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 
 
 <step-to-complete>
-### 1.3 Sequence Representation
-- [ ] **Implement `hybrid/models/sequence_repr.py`**:
-- [ ] **Test sequence representation**:
-### 1.4 Basic Energy Model
-- [ ] **Implement `hybrid/models/energy_head.py`**:
-- [ ] **Test energy model**:
+
+### 2.2 Loss Functions & Training
+- [ ] **Implement `hybrid/training/losses.py`**:
+  - [ ] Create `ContrastiveLoss` with ranking and temperature terms
+  - [ ] Add margin-based loss for energy ranking (E_pos + margin < E_neg)
+  - [ ] Implement temperature-scaled contrastive loss
+  - [ ] Add regularization terms (entropy, smoothness)
+  - [ ] Include loss weighting for different negative types
+
+- [ ] **Implement training loop `hybrid/training/train_energy.py`**:
+  - [ ] Create training script with proper argument parsing
+  - [ ] Add model initialization and checkpoint loading/saving
+  - [ ] Implement training loop with validation monitoring
+  - [ ] Add logging for loss curves and energy distributions
+  - [ ] Include early stopping and learning rate scheduling
+
+- [ ] **Training validation**:
+  - [ ] Test training loop on small dataset subset
+  - [ ] Verify loss decreases and energy rankings improve
+  - [ ] Monitor for training instabilities or divergence
+  - [ ] Validate checkpoint saving/loading functionality
+
 
 </step-to-complete>
 
@@ -34,7 +50,26 @@ Check the changes made, which complete the following step of our implementation 
 
 <step>
 
+### 2.2 Loss Functions & Training
+- [ ] **Implement `hybrid/training/losses.py`**:
+  - [ ] Create `ContrastiveLoss` with ranking and temperature terms
+  - [ ] Add margin-based loss for energy ranking (E_pos + margin < E_neg)
+  - [ ] Implement temperature-scaled contrastive loss
+  - [ ] Add regularization terms (entropy, smoothness)
+  - [ ] Include loss weighting for different negative types
 
+- [ ] **Implement training loop `hybrid/training/train_energy.py`**:
+  - [ ] Create training script with proper argument parsing
+  - [ ] Add model initialization and checkpoint loading/saving
+  - [ ] Implement training loop with validation monitoring
+  - [ ] Add logging for loss curves and energy distributions
+  - [ ] Include early stopping and learning rate scheduling
+
+- [ ] **Training validation**:
+  - [ ] Test training loop on small dataset subset
+  - [ ] Verify loss decreases and energy rankings improve
+  - [ ] Monitor for training instabilities or divergence
+  - [ ] Validate checkpoint saving/loading functionality
 
 
 </step>
