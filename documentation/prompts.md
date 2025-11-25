@@ -17,19 +17,19 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 
 ## Phase 3: Iterative Optimization (Weeks 9-12)
 
-### 3.2 Multi-Landscape Training
-- [ ] **Implement landscape training `hybrid/training/train_landscapes.py`**:
-  - [ ] Create script for training multiple energy models E_1, ..., E_T
-  - [ ] Implement progressive noise/smoothness annealing£
-  - [ ] Add curriculum learning for landscape difficulty
-  - [ ] Include cross-landscape consistency losses
-  - [ ] Add landscape-specific evaluation metrics
+### 3.3 End-to-End Pipeline Integration
+- [ ] **Implement `hybrid/inference/design_pipeline.py`**:
+  - [ ] Create unified design pipeline class
+  - [ ] Add backbone input → optimized sequence output functionality
+  - [ ] Include initialization from ProteinMPNN decoder outputs
+  - [ ] Add result validation and quality assessment
+  - [ ] Include batch processing for multiple design targets
 
-- [ ] **Landscape validation**:
-  - [ ] Test that landscapes form proper annealing sequence
-  - [ ] Verify optimization progresses smoothly across landscapes
-  - [ ] Check that final landscape produces sharp energy minima
-  - [ ] Validate computational requirements for multi-landscape training
+- [ ] **Pipeline testing**:
+  - [ ] Test complete pipeline on sample PDB structures
+  - [ ] Verify integration between all components
+  - [ ] Check error handling and edge case behavior
+  - [ ] Validate output sequence quality and properties
 
 
 </step-to-complete>
@@ -47,19 +47,21 @@ Check the changes made, which complete the following step of our implementation 
 
 <step>
 
-### 3.2 Multi-Landscape Training
-- [ ] **Implement landscape training `hybrid/training/train_landscapes.py`**:
-  - [ ] Create script for training multiple energy models E_1, ..., E_T
-  - [ ] Implement progressive noise/smoothness annealing
-  - [ ] Add curriculum learning for landscape difficulty
-  - [ ] Include cross-landscape consistency losses
-  - [ ] Add landscape-specific evaluation metrics
+## Phase 3: Iterative Optimization (Weeks 9-12)
 
-- [ ] **Landscape validation**:
-  - [ ] Test that landscapes form proper annealing sequence
-  - [ ] Verify optimization progresses smoothly across landscapes
-  - [ ] Check that final landscape produces sharp energy minima
-  - [ ] Validate computational requirements for multi-landscape training
+### 3.3 End-to-End Pipeline Integration
+- [ ] **Implement `hybrid/inference/design_pipeline.py`**:
+  - [ ] Create unified design pipeline class
+  - [ ] Add backbone input → optimized sequence output functionality
+  - [ ] Include initialization from ProteinMPNN decoder outputs
+  - [ ] Add result validation and quality assessment
+  - [ ] Include batch processing for multiple design targets
+
+- [ ] **Pipeline testing**:
+  - [ ] Test complete pipeline on sample PDB structures
+  - [ ] Verify integration between all components
+  - [ ] Check error handling and edge case behavior
+  - [ ] Validate output sequence quality and properties
 
 </step>
 
