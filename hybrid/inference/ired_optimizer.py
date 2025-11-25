@@ -70,6 +70,9 @@ class OptimizationConfig:
     relative_patience_threshold: float = 1e-4
     absolute_energy_threshold: float = 1e-6
     
+    # Step allocation configuration
+    adaptive_step_allocation: bool = True  # Use weighted allocation (more steps to later landscapes)
+    
     # Deprecated - kept for backward compatibility
     early_stop_threshold: float = 1e-4
     
@@ -318,11 +321,45 @@ class IREDSequenceOptimizer:
         # Optimization trajectory
         trajectory = [] if return_trajectory else None
         
-        # Determine steps per landscape
+        # Determine steps per landscape with adaptive allocation
         if max_steps is not None:
-            steps_per_landscape = max(1, max_steps // self.num_landscapes)
+            if max_steps < self.num_landscapes:
+                raise ValueError(f"max_steps ({max_steps}) must be >= num_landscapes ({self.num_landscapes})")
+            
+            # Scientifically principled step allocation: more steps to later (harder) landscapes
+            if self.config.adaptive_step_allocation:
+                weights = np.array([1.2 ** i for i in range(self.num_landscapes)])
+                weights = weights / weights.sum() * max_steps
+                steps_per_landscape = np.maximum(1, np.round(weights).astype(int))
+                
+                # Ensure exact budget compliance
+                total_allocated = steps_per_landscape.sum()
+                if total_allocated > max_steps:
+                    # Remove excess steps from landscapes with most steps
+                    excess = total_allocated - max_steps
+                    for i in range(excess):
+                        max_idx = np.argmax(steps_per_landscape)
+                        steps_per_landscape[max_idx] -= 1
+                elif total_allocated < max_steps:
+                    # Add remaining steps to later landscapes
+                    remaining = max_steps - total_allocated
+                    for i in range(remaining):
+                        # Prefer later landscapes for additional steps
+                        target_idx = self.num_landscapes - 1 - (i % self.num_landscapes)
+                        steps_per_landscape[target_idx] += 1
+                        
+                # Validate exact budget compliance
+                assert steps_per_landscape.sum() == max_steps, f"Step allocation error: {steps_per_landscape.sum()} != {max_steps}"
+            else:
+                # Equal allocation with remainder distribution
+                base_steps = max_steps // self.num_landscapes
+                remainder = max_steps % self.num_landscapes
+                steps_per_landscape = np.full(self.num_landscapes, base_steps)
+                # Distribute remainder to later landscapes
+                for i in range(remainder):
+                    steps_per_landscape[self.num_landscapes - 1 - i] += 1
         else:
-            steps_per_landscape = self.config.max_steps_per_landscape
+            steps_per_landscape = np.full(self.num_landscapes, self.config.max_steps_per_landscape)
         
         # Total step counter
         total_steps = 0
@@ -338,14 +375,16 @@ class IREDSequenceOptimizer:
             # Compute noise scale for this landscape (decay over landscapes)
             noise_scale = self.config.noise_scale * (self.config.noise_decay ** landscape_idx)
             
+            # Get steps allocated for this landscape
+            current_landscape_steps = int(steps_per_landscape[landscape_idx]) if isinstance(steps_per_landscape, np.ndarray) else steps_per_landscape
+            
             # Optimize in current landscape
-            for step in range(steps_per_landscape):
+            for step in range(current_landscape_steps):
                 # Zero gradients
                 optimizer.zero_grad()
                 
-                # Clamp logits for numerical stability
-                with torch.no_grad():
-                    current_logits.clamp_(-10.0, 10.0)
+                # Soft differentiable clamping for numerical stability while maintaining gradients
+                current_logits = 10.0 * torch.tanh(current_logits / 10.0)
                 
                 # Convert logits to soft sequence representation
                 # Use sequence_repr with landscape-specific temperature
@@ -361,16 +400,24 @@ class IREDSequenceOptimizer:
                 # Average energy over batch for scalar loss
                 loss = energy.mean()
                 
-                # Check for NaN/Inf
-                if torch.isnan(loss) or torch.isinf(loss):
-                    warnings.warn(
-                        f"NaN/Inf detected at landscape {landscape_idx}, step {step}. "
-                        f"Aborting optimization immediately to prevent invalid results."
-                    )
+                # Add exploration noise via entropy regularization BEFORE backward pass
+                if landscape_idx < self.num_landscapes // 2 and noise_scale > 0:
+                    # Add noise to loss computation via entropy regularization instead of parameter noise
+                    # This maintains optimizer state consistency
+                    entropy_weight = noise_scale * 0.1  # Scale appropriately
+                    logits_entropy = -torch.sum(F.softmax(current_logits, dim=-1) * F.log_softmax(current_logits, dim=-1))
+                    loss = loss - entropy_weight * logits_entropy
+                
+                # Check for NaN/Inf in loss and logits
+                if torch.isnan(loss) or torch.isinf(loss) or torch.isnan(current_logits).any() or torch.isinf(current_logits).any():
+                    error_msg = (f"NaN or Inf detected at landscape {landscape_idx}, step {step}. "
+                               f"Logit stats: min={current_logits.min():.3f}, max={current_logits.max():.3f}, "
+                               f"loss={loss:.3f}, energy={energy.mean():.3f}")
+                    warnings.warn(error_msg)
                     optimization_failed = True
-                    # Store failure context for diagnostics
                     failure_landscape = landscape_idx
                     failure_step = step
+                    failure_reason = error_msg
                     break
                 
                 # Backward pass
@@ -384,15 +431,6 @@ class IREDSequenceOptimizer:
                 
                 # Optimization step
                 optimizer.step()
-                
-                # Add exploration noise in early landscapes
-                if landscape_idx < self.num_landscapes // 2 and noise_scale > 0:
-                    with torch.no_grad():
-                        if self.rng is not None:
-                            noise = torch.randn(current_logits.shape, generator=self.rng, device=current_logits.device) * noise_scale
-                        else:
-                            noise = torch.randn_like(current_logits) * noise_scale
-                        current_logits.add_(noise)
                 
                 # Update step counter
                 total_steps += 1
@@ -464,7 +502,7 @@ class IREDSequenceOptimizer:
                 landscapes_used=failure_landscape + 1,  # How many landscapes before failure
                 seed_used=self.seed,
                 optimization_failed=True,
-                failure_reason=(
+                failure_reason=failure_reason if 'failure_reason' in locals() else (
                     f"NaN/Inf detected at landscape {failure_landscape}, step {failure_step}. "
                     f"Possible causes: (1) Gradient explosion - reduce learning_rate or increase gradient_clip_norm, "
                     f"(2) Numerical overflow in energy computation - check energy model implementation, "

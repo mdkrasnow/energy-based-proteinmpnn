@@ -17,25 +17,19 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 
 ## Phase 3: Iterative Optimization (Weeks 9-12)
 
-### 3.1 IRED-Style Optimization Engine
-- [ ] **Implement `hybrid/inference/ired_optimizer.py`**:
-  - [ ] Create `IREDSequenceOptimizer` class with multi-landscape support
-  - [ ] Implement `optimize_sequence` with annealed energy landscapes
-  - [ ] Add gradient-based optimization loop with Adam optimizer
-  - [ ] Include convergence monitoring and early stopping
-  - [ ] Add noise injection for exploration in early landscapes
+### 3.2 Multi-Landscape Training
+- [ ] **Implement landscape training `hybrid/training/train_landscapes.py`**:
+  - [ ] Create script for training multiple energy models E_1, ..., E_T
+  - [ ] Implement progressive noise/smoothness annealing£
+  - [ ] Add curriculum learning for landscape difficulty
+  - [ ] Include cross-landscape consistency losses
+  - [ ] Add landscape-specific evaluation metrics
 
-- [ ] **Adaptive computation features**:
-  - [ ] Implement `adaptive_optimization` with difficulty assessment
-  - [ ] Add automatic step allocation based on convergence quality
-  - [ ] Include multiple restart strategies for failed optimizations
-  - [ ] Add trajectory logging and analysis capabilities
-
-- [ ] **Test optimization engine**:
-  - [ ] Verify optimization converges to discrete sequences
-  - [ ] Test adaptive step allocation on different difficulty levels
-  - [ ] Validate gradient flow and numerical stability
-  - [ ] Check memory usage and computational efficiency
+- [ ] **Landscape validation**:
+  - [ ] Test that landscapes form proper annealing sequence
+  - [ ] Verify optimization progresses smoothly across landscapes
+  - [ ] Check that final landscape produces sharp energy minima
+  - [ ] Validate computational requirements for multi-landscape training
 
 
 </step-to-complete>
@@ -53,26 +47,19 @@ Check the changes made, which complete the following step of our implementation 
 
 <step>
 
-### 3.1 IRED-Style Optimization Engine
-- [ ] **Implement `hybrid/inference/ired_optimizer.py`**:
-  - [ ] Create `IREDSequenceOptimizer` class with multi-landscape support
-  - [ ] Implement `optimize_sequence` with annealed energy landscapes
-  - [ ] Add gradient-based optimization loop with Adam optimizer
-  - [ ] Include convergence monitoring and early stopping
-  - [ ] Add noise injection for exploration in early landscapes
+### 3.2 Multi-Landscape Training
+- [ ] **Implement landscape training `hybrid/training/train_landscapes.py`**:
+  - [ ] Create script for training multiple energy models E_1, ..., E_T
+  - [ ] Implement progressive noise/smoothness annealing
+  - [ ] Add curriculum learning for landscape difficulty
+  - [ ] Include cross-landscape consistency losses
+  - [ ] Add landscape-specific evaluation metrics
 
-- [ ] **Adaptive computation features**:
-  - [ ] Implement `adaptive_optimization` with difficulty assessment
-  - [ ] Add automatic step allocation based on convergence quality
-  - [ ] Include multiple restart strategies for failed optimizations
-  - [ ] Add trajectory logging and analysis capabilities
-
-- [ ] **Test optimization engine**:
-  - [ ] Verify optimization converges to discrete sequences
-  - [ ] Test adaptive step allocation on different difficulty levels
-  - [ ] Validate gradient flow and numerical stability
-  - [ ] Check memory usage and computational efficiency
-
+- [ ] **Landscape validation**:
+  - [ ] Test that landscapes form proper annealing sequence
+  - [ ] Verify optimization progresses smoothly across landscapes
+  - [ ] Check that final landscape produces sharp energy minima
+  - [ ] Validate computational requirements for multi-landscape training
 
 </step>
 
