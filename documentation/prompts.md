@@ -15,21 +15,21 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 <step-to-complete>
 
 
-## Phase 3: Iterative Optimization (Weeks 9-12)
+## Phase 4: Comprehensive Evaluation
 
-### 3.3 End-to-End Pipeline Integration
-- [ ] **Implement `hybrid/inference/design_pipeline.py`**:
-  - [ ] Create unified design pipeline class
-  - [ ] Add backbone input → optimized sequence output functionality
-  - [ ] Include initialization from ProteinMPNN decoder outputs
-  - [ ] Add result validation and quality assessment
-  - [ ] Include batch processing for multiple design targets
+### 4.1 Benchmark Dataset Preparation
+- [ ] **Create evaluation datasets**:
+  - [ ] Curate novel backbone designs (hallucinated structures)
+  - [ ] Prepare multi-constraint problems (binding + stability)
+  - [ ] Include length/complexity extrapolation test cases
+  - [ ] Add challenging design targets from literature
+  - [ ] Create ground truth labels for validation
 
-- [ ] **Pipeline testing**:
-  - [ ] Test complete pipeline on sample PDB structures
-  - [ ] Verify integration between all components
-  - [ ] Check error handling and edge case behavior
-  - [ ] Validate output sequence quality and properties
+- [ ] **Baseline comparisons**:
+  - [ ] Implement ProteinMPNN baseline evaluation
+  - [ ] Add RFdiffusion comparison (if available)
+  - [ ] Include Rosetta design baseline
+  - [ ] Create unified evaluation framework for fair comparison
 
 
 </step-to-complete>
@@ -47,21 +47,21 @@ Check the changes made, which complete the following step of our implementation 
 
 <step>
 
-## Phase 3: Iterative Optimization (Weeks 9-12)
+## Phase 4: Comprehensive Evaluation
 
-### 3.3 End-to-End Pipeline Integration
-- [ ] **Implement `hybrid/inference/design_pipeline.py`**:
-  - [ ] Create unified design pipeline class
-  - [ ] Add backbone input → optimized sequence output functionality
-  - [ ] Include initialization from ProteinMPNN decoder outputs
-  - [ ] Add result validation and quality assessment
-  - [ ] Include batch processing for multiple design targets
+### 4.1 Benchmark Dataset Preparation
+- [ ] **Create evaluation datasets**:
+  - [ ] Curate novel backbone designs (hallucinated structures)
+  - [ ] Prepare multi-constraint problems (binding + stability)
+  - [ ] Include length/complexity extrapolation test cases
+  - [ ] Add challenging design targets from literature
+  - [ ] Create ground truth labels for validation
 
-- [ ] **Pipeline testing**:
-  - [ ] Test complete pipeline on sample PDB structures
-  - [ ] Verify integration between all components
-  - [ ] Check error handling and edge case behavior
-  - [ ] Validate output sequence quality and properties
+- [ ] **Baseline comparisons**:
+  - [ ] Implement ProteinMPNN baseline evaluation
+  - [ ] Add RFdiffusion comparison (if available)
+  - [ ] Include Rosetta design baseline
+  - [ ] Create unified evaluation framework for fair comparison
 
 </step>
 
