@@ -15,14 +15,19 @@ ssh -MNf \
   -o ControlPersist=600 \
   "${REMOTE}"
 
-echo "Running SCP transfers using shared connection..."
+echo "Creating remote directories and running SCP transfers using shared connection..."
+
+# Create necessary directories on remote server
+ssh -o ControlPath="${CTRL_PATH}" "${REMOTE}" "mkdir -p hybrid_evaluation hybrid_training"
 
 # Copy main training and evaluation Python scripts
 scp -o ControlPath="${CTRL_PATH}" hybrid/evaluation/run_comprehensive_evaluation.py "${REMOTE}:~/hybrid_evaluation/run_comprehensive_evaluation.py"
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy.py "${REMOTE}:~/hybrid_training/train_energy.py"
 
-# Copy Slurm batch scripts
+
+scp -o ControlPath="${CTRL_PATH}" train_hybrid_proteinmpnn_dev.sh "${REMOTE}:~/train_hybrid_proteinmpnn_dev.sh"
 scp -o ControlPath="${CTRL_PATH}" train_hybrid_proteinmpnn.sh "${REMOTE}:~/train_hybrid_proteinmpnn.sh"
+scp -o ControlPath="${CTRL_PATH}" eval_hybrid_proteinmpnn_dev.sh "${REMOTE}:~/eval_hybrid_proteinmpnn_dev.sh"
 scp -o ControlPath="${CTRL_PATH}" eval_hybrid_proteinmpnn.sh "${REMOTE}:~/eval_hybrid_proteinmpnn.sh"
 
 echo "Closing master SSH connection..."
