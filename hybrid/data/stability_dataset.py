@@ -34,6 +34,11 @@ except ImportError:
     BIOPYTHON_AVAILABLE = False
     warnings.warn("BioPython not available. PDB parsing will be limited.")
 
+# Type annotations fallback for when BioPython is not available
+if not BIOPYTHON_AVAILABLE:
+    from typing import Any
+    Chain = Any  # Fallback type annotation when BioPython imports fail
+
 # Safely add proteinmpnn to path for utilities
 def _add_proteinmpnn_to_path():
     """Safely add ProteinMPNN module to Python path with validation"""
