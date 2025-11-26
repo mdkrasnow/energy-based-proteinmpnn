@@ -135,7 +135,7 @@ for location_pattern in "${SEARCH_LOCATIONS[@]}"; do
 done
 
 if [ "$MODELS_COPIED" = false ]; then
-    echo "WARNING: No trained hybrid models found!"
+    echo "ERROR: No trained hybrid models found!"
     echo ""
     echo "Expected to find model files like:"
     echo "  - best_model.pt"
@@ -143,14 +143,8 @@ if [ "$MODELS_COPIED" = false ]; then
     echo "  - epoch_*.pt"
     echo ""
     echo "Please ensure that training completed successfully first."
-    echo "For now, creating mock evaluation to test the pipeline..."
-    
-    # Create mock trained model for pipeline testing
-    TRAINED_MODEL_DIR="$JOB_SCRATCH/trained_models"
-    mkdir -p "$TRAINED_MODEL_DIR"
-    
-    # Note: This would be replaced with actual trained model in real scenario
-    touch "$TRAINED_MODEL_DIR/mock_model.pt"
+    echo "Cannot proceed with evaluation without trained models."
+    exit 1
 fi
 
 # ------------------------------------------------------------------------------
@@ -265,351 +259,50 @@ EOF
 
 echo "Evaluation configuration created at: $EVAL_CONFIG"
 
-# Generate comprehensive evaluation data including baseline comparisons
-EVAL_DATA_SCRIPT="$JOB_SCRATCH/generate_eval_data.py"
+# Validate that required evaluation data exists
+echo "Validating evaluation data prerequisites..."
 
-cat > "$EVAL_DATA_SCRIPT" << 'EOF'
-#!/usr/bin/env python3
-"""Generate comprehensive evaluation data for hybrid vs baseline comparison"""
+REQUIRED_DATA_FILES=(
+    "$JOB_SCRATCH/../evaluation_data/optimization_results.json"
+    "$JOB_SCRATCH/../evaluation_data/baseline_proteinmpnn_results.json"
+    "$JOB_SCRATCH/../evaluation_data/landscape_data.json"
+    "$JOB_SCRATCH/../evaluation_data/benchmark_problems.json"
+)
 
-import os
-import json
-import random
-import numpy as np
-import math
-from pathlib import Path
-from typing import Dict, List, Any
+MISSING_DATA=false
 
-def generate_baseline_proteinmpnn_results(num_problems: int = 200) -> List[Dict]:
-    """Generate realistic baseline ProteinMPNN results for comparison"""
-    
-    baseline_results = []
-    random.seed(42)  # For reproducible results
-    
-    problem_types = ['novel_backbone', 'multi_constraint', 'extrapolation']
-    difficulties = ['easy', 'medium', 'hard']
-    
-    # Baseline ProteinMPNN success rates (realistic estimates)
-    baseline_success_rates = {
-        'easy': 0.85,
-        'medium': 0.65, 
-        'hard': 0.45
-    }
-    
-    for i in range(num_problems):
-        problem_type = random.choice(problem_types)
-        difficulty = random.choice(difficulties)
-        seq_length = random.randint(50, 250)
-        
-        # Baseline success determination
-        success_rate = baseline_success_rates[difficulty]
-        # Add some type-specific variation
-        if problem_type == 'extrapolation':
-            success_rate *= 0.9  # Harder for extrapolation
-        elif problem_type == 'novel_backbone':
-            success_rate *= 0.95  # Slightly harder for novel backbones
-        
-        is_successful = random.random() < success_rate
-        
-        # Generate realistic metrics for baseline
-        if is_successful:
-            design_quality = random.uniform(0.7, 0.95)
-            confidence_score = random.uniform(0.6, 0.9)
-            rmsd = random.uniform(0.5, 2.0)
-        else:
-            design_quality = random.uniform(0.2, 0.6)
-            confidence_score = random.uniform(0.1, 0.5)
-            rmsd = random.uniform(2.0, 5.0)
-        
-        baseline_result = {
-            'problem_id': f'baseline_{i:04d}',
-            'problem_type': problem_type,
-            'difficulty': difficulty,
-            'sequence_length': seq_length,
-            'method': 'baseline_proteinmpnn',
-            'successful': is_successful,
-            'design_quality': design_quality,
-            'confidence_score': confidence_score,
-            'rmsd': rmsd,
-            'computation_time': random.uniform(10, 60),  # seconds
-            'sampling_steps': 1,  # Single step for baseline
-            'energy_improvement': random.uniform(-0.5, -2.0) if is_successful else random.uniform(0, -0.3)
-        }
-        
-        baseline_results.append(baseline_result)
-    
-    return baseline_results
+for data_file in "${REQUIRED_DATA_FILES[@]}"; do
+    if [ ! -f "$data_file" ]; then
+        echo "ERROR: Required evaluation data missing: $data_file"
+        MISSING_DATA=true
+    else
+        echo "✓ Found: $(basename "$data_file")"
+    fi
+done
 
-def generate_hybrid_optimization_data(num_problems: int = 200) -> List[Dict]:
-    """Generate hybrid optimization results with energy-based improvements"""
-    
-    optimization_results = []
-    random.seed(43)  # Different seed for hybrid results
-    
-    problem_types = ['novel_backbone', 'multi_constraint', 'extrapolation']
-    difficulties = ['easy', 'medium', 'hard']
-    
-    # Hybrid system should show improvement over baseline
-    hybrid_success_rates = {
-        'easy': 0.92,    # +7% improvement
-        'medium': 0.78,  # +13% improvement  
-        'hard': 0.62     # +17% improvement
-    }
-    
-    for i in range(num_problems):
-        problem_type = random.choice(problem_types)
-        difficulty = random.choice(difficulties)
-        seq_length = random.randint(50, 250)
-        
-        # Hybrid success determination
-        success_rate = hybrid_success_rates[difficulty]
-        # Type-specific improvements
-        if problem_type == 'multi_constraint':
-            success_rate *= 1.05  # Hybrid especially good at multi-constraint
-        
-        is_successful = random.random() < success_rate
-        converged = is_successful and random.random() < 0.9  # Most successful runs converge
-        
-        # Generate realistic energy optimization trajectory
-        initial_energy = random.uniform(-1.0, -3.0)
-        target_improvement = random.uniform(0.5, 2.5) if is_successful else random.uniform(0, 0.8)
-        final_energy = initial_energy - target_improvement
-        
-        # Generate optimization trajectory
-        total_steps = random.randint(20, 100)
-        adaptive_extensions = max(0, random.randint(-1, 3))
-        total_steps += adaptive_extensions * 10
-        
-        trajectory = []
-        current_energy = initial_energy
-        
-        for step in range(total_steps):
-            # Landscape annealing schedule (0 -> 4)
-            landscape_idx = min(4, step // (total_steps // 5))
-            
-            # Energy improvement dynamics
-            if step < 10:
-                # Initial rapid improvement
-                improvement = random.uniform(0.02, 0.15)
-            elif step < total_steps * 0.7:
-                # Gradual improvement
-                if random.random() < 0.8:
-                    improvement = random.uniform(0.005, 0.08)
-                else:
-                    improvement = random.uniform(-0.02, 0.02)  # Occasional plateau
-            else:
-                # Final refinement
-                improvement = random.uniform(0, 0.03)
-            
-            current_energy -= improvement
-            
-            # Add realistic noise
-            noise = random.uniform(-0.01, 0.01)
-            recorded_energy = current_energy + noise
-            
-            trajectory.append({
-                'landscape': landscape_idx,
-                'step': step,
-                'energy': recorded_energy,
-                'gradient_norm': abs(improvement) + random.uniform(0, 0.05),
-                'temperature': 1.0 - (landscape_idx * 0.2)  # Annealing
-            })
-        
-        # Ensure final energy matches expected improvement
-        if len(trajectory) > 0:
-            trajectory[-1]['energy'] = final_energy
-        
-        # Generate metrics with hybrid improvements
-        if is_successful:
-            design_quality = random.uniform(0.75, 0.98)  # Better than baseline
-            confidence_score = random.uniform(0.65, 0.95)
-            rmsd = random.uniform(0.3, 1.8)  # Better structural accuracy
-        else:
-            design_quality = random.uniform(0.3, 0.65)
-            confidence_score = random.uniform(0.2, 0.55)
-            rmsd = random.uniform(1.5, 4.0)
-        
-        optimization_result = {
-            'problem_id': f'hybrid_{i:04d}',
-            'problem_info': {
-                'type': problem_type,
-                'difficulty': difficulty,
-                'sequence_length': seq_length
-            },
-            'optimization_result': {
-                'converged': converged,
-                'total_steps_used': total_steps,
-                'initial_steps_allocated': total_steps - (adaptive_extensions * 10),
-                'adaptive_extensions_count': adaptive_extensions,
-                'final_energy': final_energy,
-                'initial_energy': initial_energy,
-                'energy_improvement': initial_energy - final_energy
-            },
-            'trajectory': trajectory,
-            'method': 'hybrid_proteinmpnn',
-            'successful': is_successful,
-            'design_quality': design_quality,
-            'confidence_score': confidence_score,
-            'rmsd': rmsd,
-            'computation_time': total_steps * 0.5 + random.uniform(10, 30)  # Adaptive time
-        }
-        
-        optimization_results.append(optimization_result)
-    
-    return optimization_results
+if [ "$MISSING_DATA" = true ]; then
+    echo ""
+    echo "ERROR: Missing required evaluation data files!"
+    echo "Please ensure evaluation data has been properly prepared."
+    echo "Expected data files:"
+    for file in "${REQUIRED_DATA_FILES[@]}"; do
+        echo "  - $file"
+    done
+    echo ""
+    echo "Cannot proceed with evaluation without proper data."
+    exit 1
+fi
 
-def generate_landscape_data(num_landscapes: int = 10) -> List[Dict]:
-    """Generate energy landscape characterization data"""
-    
-    landscapes = []
-    
-    for i in range(num_landscapes):
-        # Generate landscape with annealing schedule
-        temperature = 1.0 - (i * 0.1)  # 1.0 -> 0.1
-        
-        landscape = {
-            'landscape_id': f'landscape_{i:02d}',
-            'temperature': temperature,
-            'landscape_index': i,
-            'characteristics': {
-                'smoothness': random.uniform(0.3, 0.9),
-                'funneling_coefficient': random.uniform(0.1, 0.8),
-                'ruggedness': random.uniform(0.1, 0.7),
-                'local_minima_density': random.uniform(0.05, 0.3)
-            },
-            'quality_metrics': {
-                'gradient_coherence': random.uniform(0.4, 0.85),
-                'basin_connectivity': random.uniform(0.2, 0.9),
-                'energy_barrier_height': random.uniform(0.1, 2.0)
-            }
-        }
-        
-        landscapes.append(landscape)
-    
-    return landscapes
+echo "✓ All required evaluation data found"
 
-def generate_benchmark_problems(num_problems: int = 150) -> List[Dict]:
-    """Generate benchmark problem definitions"""
-    
-    benchmarks = []
-    
-    problem_types = ['novel_backbones', 'multi_constraint', 'extrapolation']
-    
-    for problem_type in problem_types:
-        for i in range(num_problems // 3):
-            difficulty = ['easy', 'medium', 'hard'][i % 3]
-            
-            benchmark = {
-                'problem_id': f'{problem_type}_{i:04d}',
-                'type': problem_type,
-                'difficulty': difficulty,
-                'sequence_length': 60 + (i * 5),
-                'target_properties': {
-                    'fold_confidence_target': 0.8 if difficulty == 'easy' else (0.75 if difficulty == 'medium' else 0.7),
-                    'stability_target': 'high',
-                    'design_quality_target': 0.8
-                },
-                'evaluation_metrics': [
-                    'success_rate',
-                    'design_quality', 
-                    'confidence_score',
-                    'rmsd',
-                    'energy_improvement'
-                ]
-            }
-            
-            if problem_type == 'multi_constraint':
-                benchmark['constraints'] = {
-                    'secondary_structure': random.choice(['alpha', 'beta', 'mixed']),
-                    'binding_site_preservation': True,
-                    'catalytic_residues': random.randint(2, 8)
-                }
-            elif problem_type == 'extrapolation':
-                benchmark['extrapolation_type'] = random.choice(['sequence_length', 'fold_family', 'sequence_identity'])
-                
-            benchmarks.append(benchmark)
-    
-    return benchmarks
-
-def save_evaluation_data(output_dir: str):
-    """Generate and save all evaluation data"""
-    
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    print("Generating evaluation datasets...")
-    
-    # Generate hybrid optimization data
-    print("  - Generating hybrid optimization results...")
-    optimization_data = generate_hybrid_optimization_data(200)
-    
-    with open(output_dir / "optimization_results.json", 'w') as f:
-        json.dump(optimization_data, f, indent=2)
-    
-    # Generate landscape data  
-    print("  - Generating landscape characterization data...")
-    landscape_data = generate_landscape_data(10)
-    
-    with open(output_dir / "landscape_data.json", 'w') as f:
-        json.dump(landscape_data, f, indent=2)
-    
-    # Generate benchmark problems
-    print("  - Generating benchmark problem definitions...")
-    benchmark_data = generate_benchmark_problems(150)
-    
-    with open(output_dir / "benchmark_problems.json", 'w') as f:
-        json.dump(benchmark_data, f, indent=2)
-    
-    # Generate baseline comparison data
-    print("  - Generating baseline ProteinMPNN results...")
-    baseline_data = generate_baseline_proteinmpnn_results(200)
-    
-    with open(output_dir / "baseline_proteinmpnn_results.json", 'w') as f:
-        json.dump(baseline_data, f, indent=2)
-    
-    # Create evaluation summary
-    summary = {
-        'dataset_info': {
-            'hybrid_optimization_problems': len(optimization_data),
-            'baseline_comparison_problems': len(baseline_data),
-            'energy_landscapes': len(landscape_data),
-            'benchmark_problems': len(benchmark_data)
-        },
-        'expected_improvements': {
-            'success_rate_improvement': '+7-17% over baseline',
-            'design_quality_improvement': '+5-10% average',
-            'convergence_rate': '85-90% for successful runs',
-            'adaptive_computation_benefit': '+10-15% success with extensions'
-        },
-        'evaluation_metrics': [
-            'Overall success rate comparison',
-            'Design quality distribution',
-            'Convergence behavior analysis', 
-            'Adaptive computation effectiveness',
-            'Energy landscape quality assessment',
-            'Computational efficiency metrics'
-        ]
-    }
-    
-    with open(output_dir / "evaluation_summary.json", 'w') as f:
-        json.dump(summary, f, indent=2)
-    
-    print(f"Evaluation data generated and saved to: {output_dir}")
-    print(f"  - Optimization results: {len(optimization_data)} problems")
-    print(f"  - Baseline comparisons: {len(baseline_data)} problems") 
-    print(f"  - Energy landscapes: {len(landscape_data)} landscapes")
-    print(f"  - Benchmark problems: {len(benchmark_data)} problems")
-
-if __name__ == "__main__":
-    import sys
-    output_dir = sys.argv[1] if len(sys.argv) > 1 else "./evaluation_data"
-    save_evaluation_data(output_dir)
-    print("Evaluation data generation complete!")
-EOF
-
-# Generate evaluation data
-echo "Generating comprehensive evaluation datasets..."
-python "$EVAL_DATA_SCRIPT" "$JOB_SCRATCH/evaluation_data"
+# Copy evaluation data to working location
+echo "Copying evaluation data to working directory..."
+mkdir -p "$JOB_SCRATCH/evaluation_data"
+for data_file in "${REQUIRED_DATA_FILES[@]}"; do
+    if [ -f "$data_file" ]; then
+        cp "$data_file" "$JOB_SCRATCH/evaluation_data/"
+    fi
+done
 
 # Update evaluation config with correct paths
 sed -i "s|\"data_directory\": \"./evaluation_data\"|\"data_directory\": \"$JOB_SCRATCH/evaluation_data\"|" "$EVAL_CONFIG"
@@ -983,27 +676,14 @@ def generate_insights_report(results_dir: Path):
         performance_analysis = analyze_performance_improvement(results['baseline'], results['hybrid'])
         efficiency_analysis = analyze_computational_efficiency(results['hybrid'])
     else:
-        print("Baseline comparison data not available - using mock analysis")
-        # Mock analysis for demonstration
-        performance_analysis = {
-            'overall_metrics': {
-                'success_rate_improvement': 0.12,
-                'design_quality_improvement': 0.08,
-                'confidence_improvement': 0.06,
-                'baseline_success_rate': 0.65,
-                'hybrid_success_rate': 0.77
-            },
-            'difficulty_breakdown': {
-                'easy': {'baseline_success_rate': 0.85, 'hybrid_success_rate': 0.92, 'improvement': 0.07},
-                'medium': {'baseline_success_rate': 0.65, 'hybrid_success_rate': 0.78, 'improvement': 0.13},
-                'hard': {'baseline_success_rate': 0.45, 'hybrid_success_rate': 0.62, 'improvement': 0.17}
-            }
-        }
-        efficiency_analysis = {
-            'adaptive_computation': {'extension_benefit': 0.15, 'problems_with_extensions': 45},
-            'convergence_metrics': {'overall_convergence_rate': 0.85, 'converged_problems': 170, 'total_problems': 200},
-            'efficiency_metrics': {'avg_computation_time_seconds': 95, 'avg_optimization_steps': 65}
-        }
+        print("ERROR: Baseline comparison data not available - cannot perform analysis")
+        print("Required data files not found:")
+        if 'baseline' not in results:
+            print("  - Baseline ProteinMPNN results missing")
+        if 'hybrid' not in results:
+            print("  - Hybrid optimization results missing")
+        print("Cannot generate insights without proper evaluation data.")
+        return
     
     # Generate recommendations and strategy
     recommendations = generate_actionable_recommendations(performance_analysis, efficiency_analysis)

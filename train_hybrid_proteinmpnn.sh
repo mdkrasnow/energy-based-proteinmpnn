@@ -128,8 +128,7 @@ if torch.cuda.is_available():
 echo "Setting up data directories and downloading model weights..."
 
 # Create necessary directories
-mkdir -p "$JOB_SCRATCH/data/protein_structures"
-mkdir -p "$JOB_SCRATCH/data/stability_data"
+mkdir -p "$JOB_SCRATCH/data"
 mkdir -p "$JOB_SCRATCH/checkpoints"
 mkdir -p "$JOB_SCRATCH/logs"
 mkdir -p "$JOB_SCRATCH/results"
@@ -165,10 +164,10 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. Generate/Prepare training data
+# 6. Prepare training configuration
 # ------------------------------------------------------------------------------
 
-echo "Preparing training data..."
+echo "Preparing training configuration..."
 
 # Create optimal training configuration
 TRAINING_CONFIG="$JOB_SCRATCH/training_config.json"
@@ -263,128 +262,8 @@ elif [ "$GPU_MEMORY" -lt 8 ]; then
     sed -i 's/"batch_size": 32/"batch_size": 8/' "$TRAINING_CONFIG"
 fi
 
-# Generate mock training data if real data is not available
-MOCK_DATA_SCRIPT="$JOB_SCRATCH/generate_mock_data.py"
 
-cat > "$MOCK_DATA_SCRIPT" << 'EOF'
-#!/usr/bin/env python3
-"""Generate mock training data for hybrid ProteinMPNN training"""
-
-import os
-import json
-import random
-import numpy as np
-from pathlib import Path
-
-def generate_mock_protein_data(output_dir: str, num_structures: int = 100):
-    """Generate mock protein structure and stability data"""
-    
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Generate mock protein structures
-    structures_dir = output_dir / "protein_structures"
-    structures_dir.mkdir(exist_ok=True)
-    
-    # Generate mock stability dataset
-    stability_dir = output_dir / "stability_data"
-    stability_dir.mkdir(exist_ok=True)
-    
-    mock_data = []
-    
-    for i in range(num_structures):
-        # Generate random protein sequence
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
-        seq_length = random.randint(50, 200)
-        sequence = ''.join(random.choice(amino_acids) for _ in range(seq_length))
-        
-        # Generate mock backbone features (simplified)
-        backbone_features = np.random.randn(seq_length, 128).astype(np.float32)
-        
-        # Mock stability labels and features
-        structure_id = f"mock_protein_{i:04d}"
-        
-        # Create mock positive example (stable)
-        positive_example = {
-            'structure_id': structure_id,
-            'sequence': sequence,
-            'backbone_features': backbone_features.tolist(),
-            'label': 1,  # stable
-            'length': seq_length,
-            'generation_method': 'reference'
-        }
-        
-        # Create mock negative examples (unstable variants)
-        for neg_type in ['random', 'shuffle', 'adversarial']:
-            if neg_type == 'random':
-                # Random sequence of same length
-                neg_sequence = ''.join(random.choice(amino_acids) for _ in range(seq_length))
-            elif neg_type == 'shuffle':
-                # Shuffled original sequence
-                neg_sequence = ''.join(random.sample(sequence, len(sequence)))
-            else:  # adversarial
-                # Modified sequence with some mutations
-                neg_sequence = list(sequence)
-                num_mutations = random.randint(5, 15)
-                for _ in range(num_mutations):
-                    pos = random.randint(0, len(neg_sequence) - 1)
-                    neg_sequence[pos] = random.choice(amino_acids)
-                neg_sequence = ''.join(neg_sequence)
-            
-            negative_example = {
-                'structure_id': f"{structure_id}_{neg_type}",
-                'sequence': neg_sequence,
-                'backbone_features': backbone_features.tolist(),  # Same backbone, different sequence
-                'label': 0,  # unstable
-                'length': seq_length,
-                'generation_method': neg_type
-            }
-            
-            mock_data.append(negative_example)
-        
-        mock_data.append(positive_example)
-    
-    # Save mock dataset
-    dataset_file = stability_dir / "mock_stability_dataset.json"
-    with open(dataset_file, 'w') as f:
-        json.dump(mock_data, f, indent=2)
-    
-    print(f"Generated {len(mock_data)} training examples")
-    print(f"Saved to: {dataset_file}")
-    
-    # Create a simple index file
-    index_file = stability_dir / "dataset_index.json"
-    index_data = {
-        'total_examples': len(mock_data),
-        'positive_examples': len([x for x in mock_data if x['label'] == 1]),
-        'negative_examples': len([x for x in mock_data if x['label'] == 0]),
-        'files': ['mock_stability_dataset.json'],
-        'generation_methods': ['reference', 'random', 'shuffle', 'adversarial']
-    }
-    
-    with open(index_file, 'w') as f:
-        json.dump(index_data, f, indent=2)
-    
-    print(f"Dataset index saved to: {index_file}")
-    return dataset_file
-
-if __name__ == "__main__":
-    import sys
-    output_dir = sys.argv[1] if len(sys.argv) > 1 else "./data"
-    num_structures = int(sys.argv[2]) if len(sys.argv) > 2 else 100
-    
-    print(f"Generating mock data in: {output_dir}")
-    print(f"Number of structures: {num_structures}")
-    
-    generate_mock_protein_data(output_dir, num_structures)
-    print("Mock data generation complete!")
-EOF
-
-# Generate mock training data
-echo "Generating mock training data..."
-python "$MOCK_DATA_SCRIPT" "$JOB_SCRATCH/data" 100
-
-# Update config to point to our data
+# Update config to point to data directory
 sed -i "s|\"data_dir\": \"./data\"|\"data_dir\": \"$JOB_SCRATCH/data\"|" "$TRAINING_CONFIG"
 
 # ------------------------------------------------------------------------------

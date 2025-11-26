@@ -612,13 +612,14 @@ class PerformanceAnalyzer:
         problem_start_time = time.time()
         
         try:
-            # Mock backbone structure for this problem
-            # In real implementation, this would use actual backbone generation
+            # Generate backbone structure for this problem
             sequence_length = problem.get('sequence_length', 100)
-            mock_backbone = self._generate_mock_backbone(sequence_length)
+            if not hasattr(self, 'design_pipeline') or self.design_pipeline is None:
+                raise RuntimeError("Design pipeline not available - cannot generate backbone structures")
             
             # Run design pipeline
-            design_result = self._run_mock_design_pipeline(mock_backbone, problem)
+            backbone = self.design_pipeline.generate_backbone(sequence_length)
+            design_result = self._run_design_pipeline(backbone, problem)
             
             # Validate design if successful
             if design_result.get('success', False):
@@ -654,169 +655,17 @@ class PerformanceAnalyzer:
                 'difficulty': problem.get('difficulty')
             }
     
-    def _generate_mock_backbone(self, sequence_length: int) -> Dict[str, Any]:
-        """Generate mock backbone for evaluation (placeholder for real backbone generation)"""
-        return {
-            'sequence_length': sequence_length,
-            'backbone_features': torch.randn(1, sequence_length, 128),  # Mock ProteinMPNN features
-            'structure_type': 'mock_backbone'
-        }
-    
-    def _run_mock_design_pipeline(self, backbone: Dict[str, Any], problem: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Run design pipeline with fallback to mock for testing.
+    def _run_design_pipeline(self, backbone: Dict[str, Any], problem: Dict[str, Any]) -> Dict[str, Any]:
+        """Run the actual design pipeline"""
         
-        TODO: Replace with full pipeline integration when trained models are available.
-        This implementation provides realistic behavior for systematic evaluation.
-        """
-        
-        sequence_length = backbone['sequence_length']
+        if not hasattr(self, 'design_pipeline') or self.design_pipeline is None:
+            raise RuntimeError("Design pipeline not available - cannot run performance analysis")
         
         try:
-            # Attempt real pipeline integration if available
-            if hasattr(self.pipeline, 'design_sequence') and not problem.get('use_mock', False):
-                # Try to use real pipeline
-                result = self._attempt_real_pipeline(backbone, problem)
-                if result is not None:
-                    return result
+            result = self.design_pipeline.design_sequence(backbone, problem)
+            return result
         except Exception as e:
-            self._log(f"Real pipeline failed, using mock: {str(e)}")
-        
-        # Fallback to mock implementation with realistic behavior
-        return self._generate_realistic_mock_result(backbone, problem)
-    
-    def _attempt_real_pipeline(self, backbone: Dict[str, Any], problem: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Attempt to use real design pipeline"""
-        
-        # This would integrate with actual pipeline once trained models are available
-        # For now, return None to indicate mock should be used
-        return None
-    
-    def _generate_realistic_mock_result(self, backbone: Dict[str, Any], problem: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate realistic mock results based on problem characteristics"""
-        
-        sequence_length = backbone['sequence_length']
-        
-        # Realistic success probabilities based on problem characteristics
-        difficulty = problem.get('difficulty', 'medium')
-        problem_type = problem.get('type', 'unknown')
-        
-        # Adjust success probability based on problem type and difficulty
-        base_success_prob = {
-            'easy': 0.85,
-            'medium': 0.65, 
-            'hard': 0.45
-        }.get(difficulty, 0.5)
-        
-        # Problem type modifiers (some types are inherently harder)
-        type_modifiers = {
-            'novel_backbone': -0.1,
-            'multi_constraint': -0.15,
-            'extrapolation': -0.2,
-            'literature_target': -0.05
-        }
-        
-        success_prob = base_success_prob + type_modifiers.get(problem_type, 0.0)
-        success_prob = max(0.1, min(0.95, success_prob))  # Clamp to reasonable range
-        
-        success = random.random() < success_prob
-        
-        if success:
-            # Generate realistic successful design
-            designed_sequence = self._generate_realistic_sequence(sequence_length, problem)
-            final_energy = self._generate_realistic_energy(sequence_length, difficulty)
-            optimization_steps = self._generate_realistic_steps(difficulty)
-            
-            return {
-                'success': True,
-                'designed_sequence': designed_sequence,
-                'final_energy': final_energy,
-                'optimization_steps': optimization_steps,
-                'convergence_achieved': True,
-                'method': 'mock_pipeline'
-            }
-        else:
-            # Generate realistic failure with problem-specific failure modes
-            failure_reason = self._generate_realistic_failure_mode(difficulty, problem_type)
-            
-            return {
-                'success': False,
-                'failure_reason': failure_reason,
-                'optimization_steps': random.randint(5, 30),
-                'method': 'mock_pipeline'
-            }
-    
-    def _generate_realistic_sequence(self, length: int, problem: Dict[str, Any]) -> str:
-        """Generate biologically realistic amino acid sequence"""
-        
-        # Realistic amino acid frequencies in natural proteins
-        aa_frequencies = {
-            'A': 0.082, 'R': 0.055, 'N': 0.041, 'D': 0.054, 'C': 0.013,
-            'Q': 0.039, 'E': 0.067, 'G': 0.071, 'H': 0.022, 'I': 0.059,
-            'L': 0.097, 'K': 0.058, 'M': 0.024, 'F': 0.039, 'P': 0.047,
-            'S': 0.067, 'T': 0.053, 'W': 0.013, 'Y': 0.029, 'V': 0.069
-        }
-        
-        amino_acids = list(aa_frequencies.keys())
-        weights = list(aa_frequencies.values())
-        
-        # Generate sequence with realistic composition
-        sequence = ''.join(np.random.choice(amino_acids, size=length, p=weights))
-        
-        return sequence
-    
-    def _generate_realistic_energy(self, length: int, difficulty: str) -> float:
-        """Generate realistic energy values based on sequence length and difficulty"""
-        
-        # Energy typically scales with sequence length
-        base_energy = -3.0 * (length / 100.0)  # Roughly -3 per 100 residues
-        
-        # Add difficulty-based variation
-        difficulty_modifiers = {
-            'easy': 0.5,    # Better (more negative) energy
-            'medium': 0.0,  # Neutral
-            'hard': -1.0    # Worse (less negative) energy
-        }
-        
-        modifier = difficulty_modifiers.get(difficulty, 0.0)
-        noise = random.uniform(-0.5, 0.5)  # Random variation
-        
-        final_energy = base_energy + modifier + noise
-        
-        return final_energy
-    
-    def _generate_realistic_steps(self, difficulty: str) -> int:
-        """Generate realistic optimization step counts"""
-        
-        base_steps = {
-            'easy': (20, 50),
-            'medium': (40, 80), 
-            'hard': (60, 120)
-        }
-        
-        min_steps, max_steps = base_steps.get(difficulty, (30, 70))
-        
-        return random.randint(min_steps, max_steps)
-    
-    def _generate_realistic_failure_mode(self, difficulty: str, problem_type: str) -> str:
-        """Generate realistic failure modes based on problem characteristics"""
-        
-        # Common failure modes with realistic frequencies
-        common_failures = ['optimization_failed', 'convergence_timeout']
-        type_specific_failures = {
-            'novel_backbone': 'invalid_sequence',
-            'multi_constraint': 'constraint_violation',
-            'extrapolation': 'energy_explosion',
-            'literature_target': 'validation_failed'
-        }
-        
-        # Higher chance of specific failures for harder problems
-        if difficulty == 'hard' and problem_type in type_specific_failures:
-            if random.random() < 0.4:  # 40% chance of type-specific failure
-                return type_specific_failures[problem_type]
-        
-        # Default to common failure modes
-        return random.choice(common_failures)
+            raise RuntimeError(f"Design pipeline failed: {str(e)}")
     
     def _validate_design_result(self, design_result: Dict[str, Any], problem: Dict[str, Any]) -> Dict[str, Any]:
         """Validate design result against problem requirements"""

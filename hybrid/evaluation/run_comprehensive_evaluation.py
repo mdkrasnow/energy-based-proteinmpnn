@@ -490,9 +490,9 @@ class ComprehensiveEvaluationRunner:
                 else:
                     raise e
             except (FileNotFoundError, json.JSONDecodeError) as e:
-                self._log(f"Data file error: {str(e)}")
-                self._log("Using mock data due to file errors")
-                evaluation_data = self._generate_mock_evaluation_data()
+                self._log(f"FATAL ERROR: Data file error: {str(e)}")
+                self._log("Cannot proceed without proper evaluation data files")
+                raise RuntimeError(f"Required evaluation data files missing or corrupted: {str(e)}")
             
             # Initialize design pipeline if needed
             try:
@@ -654,10 +654,10 @@ class ComprehensiveEvaluationRunner:
             self.data_validator.validate_benchmark_data
         )
         
-        # Generate mock data if no real data available
+        # Validate that required data is available
         if not any(evaluation_data.values()):
-            self._log("No evaluation data files provided. Generating mock data for demonstration.")
-            evaluation_data = self._generate_mock_evaluation_data()
+            self._log("FATAL ERROR: No evaluation data files provided or loaded successfully.")
+            raise RuntimeError("Cannot proceed without evaluation data. Please provide required data files.")
         
         # Apply batch size limits for memory management
         evaluation_data = self._apply_batch_limits(evaluation_data)
@@ -744,120 +744,6 @@ class ComprehensiveEvaluationRunner:
         
         return evaluation_data
     
-    def _generate_mock_evaluation_data(self) -> Dict[str, Any]:
-        """Generate mock evaluation data for testing/demonstration"""
-        
-        self._log("Generating mock evaluation data...")
-        
-        mock_data = {
-            'optimization_data': [],
-            'landscape_data': [],
-            'benchmark_data': []
-        }
-        
-        # Generate realistic mock optimization results
-        import random
-        import math
-        
-        random.seed(42)  # For reproducible mock data
-        
-        for i in range(50):  # 50 mock optimization runs
-            problem_type = ['novel_backbone', 'multi_constraint', 'extrapolation'][i % 3]
-            difficulty = ['easy', 'medium', 'hard'][i % 3]
-            
-            # Realistic success rates based on difficulty
-            success_rates = {'easy': 0.9, 'medium': 0.7, 'hard': 0.5}
-            converged = random.random() < success_rates[difficulty]
-            
-            # Generate realistic energy trajectory
-            initial_energy = random.uniform(-1.0, -3.0)
-            total_steps = random.randint(30, 150)
-            
-            trajectory = []
-            current_energy = initial_energy
-            
-            for j in range(total_steps):
-                # Add realistic optimization dynamics
-                if j < 10:
-                    # Initial rapid improvement
-                    energy_change = random.uniform(-0.3, -0.1)
-                elif j < total_steps * 0.7:
-                    # Gradual improvement with occasional plateaus
-                    if random.random() < 0.2:  # 20% chance of plateau
-                        energy_change = random.uniform(-0.05, 0.05)
-                    else:
-                        energy_change = random.uniform(-0.2, -0.02)
-                else:
-                    # Final refinement phase
-                    energy_change = random.uniform(-0.05, 0.02)
-                
-                current_energy += energy_change
-                
-                # Add some noise
-                noise = random.uniform(-0.02, 0.02)
-                recorded_energy = current_energy + noise
-                
-                trajectory.append({
-                    'landscape': min(j // 15, 4),  # Landscape annealing
-                    'step': j,
-                    'energy': recorded_energy,
-                    'gradient_norm': abs(energy_change) + random.uniform(0, 0.1)
-                })
-            
-            # If converged, ensure final energy is reasonable
-            if converged:
-                final_energy = min(current_energy, initial_energy - 1.0)
-            else:
-                # Non-converged runs may have worse final energy
-                final_energy = current_energy + random.uniform(0, 0.5)
-            
-            mock_optimization = {
-                'problem_info': {
-                    'type': problem_type,
-                    'difficulty': difficulty,
-                    'sequence_length': random.randint(80, 200)
-                },
-                'optimization_result': {
-                    'converged': converged,
-                    'total_steps_used': total_steps,
-                    'initial_steps_allocated': random.randint(30, 80),
-                    'adaptive_extensions_count': max(0, random.randint(-1, 3)),
-                    'final_energy': final_energy,
-                    'initial_energy': initial_energy
-                },
-                'trajectory': trajectory
-            }
-            mock_data['optimization_data'].append(mock_optimization)
-        
-        # Generate mock landscape data
-        for i in range(5):  # 5 mock energy landscapes
-            mock_landscape = {
-                'landscape_id': f'landscape_{i:02d}',
-                'temperature': 1.0 - (i * 0.2),  # Temperature annealing 1.0 -> 0.2
-                'landscape_index': i,
-                'energy_model': None  # Would contain actual model in real implementation
-            }
-            mock_data['landscape_data'].append(mock_landscape)
-        
-        # Generate mock benchmark data
-        benchmark_types = ['novel_backbones', 'multi_constraint', 'extrapolation']
-        for bench_type in benchmark_types:
-            for i in range(20):  # 20 problems per benchmark type
-                mock_benchmark = {
-                    'type': bench_type,
-                    'difficulty': ['easy', 'medium', 'hard'][i % 3],
-                    'sequence_length': 80 + (i * 10),
-                    'target_properties': {
-                        'fold_confidence_target': 0.8,
-                        'stability_target': 'high'
-                    }
-                }
-                mock_data['benchmark_data'].append(mock_benchmark)
-        
-        self._log(f"Generated mock data: {len(mock_data['optimization_data'])} optimization runs, "
-                 f"{len(mock_data['landscape_data'])} landscapes, {len(mock_data['benchmark_data'])} benchmark problems")
-        
-        return mock_data
     
     def _initialize_design_pipeline(self) -> Optional[Any]:
         """Initialize design pipeline for performance analysis"""
