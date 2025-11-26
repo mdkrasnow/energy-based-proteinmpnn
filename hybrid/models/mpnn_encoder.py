@@ -11,16 +11,60 @@ import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 import os
 import sys
+from pathlib import Path
 from typing import Optional, Dict, Any
 
-# Add proteinmpnn to path to import utilities
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'proteinmpnn'))
+# Add proteinmpnn to path with robust absolute path resolution
+current_file = Path(__file__).resolve()
+project_root = current_file.parent.parent.parent  # Go up from models/ to hybrid/ to project root/
+proteinmpnn_path = project_root / "proteinmpnn"
+
+# Ensure proteinmpnn directory exists before adding to path
+if proteinmpnn_path.exists():
+    sys.path.insert(0, str(proteinmpnn_path))
+else:
+    # Fallback: try to find proteinmpnn relative to current working directory
+    fallback_path = Path.cwd() / "proteinmpnn"
+    if fallback_path.exists():
+        sys.path.insert(0, str(fallback_path))
+    else:
+        raise ImportError(f"Cannot locate proteinmpnn directory. Checked: {proteinmpnn_path}, {fallback_path}")
 
 try:
+    # Primary import attempt from protein_mpnn_utils
     from protein_mpnn_utils import ProteinMPNN, ProteinFeatures, CA_ProteinFeatures, EncLayer
     from protein_mpnn_utils import gather_nodes
-except ImportError as e:
-    raise ImportError(f"Could not import ProteinMPNN utilities: {e}. Make sure proteinmpnn submodule is available.")
+except ImportError as primary_error:
+    try:
+        # Fallback 1: Try package-style import
+        from proteinmpnn.protein_mpnn_utils import ProteinMPNN, ProteinFeatures, CA_ProteinFeatures, EncLayer
+        from proteinmpnn.protein_mpnn_utils import gather_nodes
+    except ImportError as fallback_error:
+        try:
+            # Fallback 2: Try adding project root to path and importing again
+            project_root = Path(__file__).resolve().parent.parent.parent
+            sys.path.insert(0, str(project_root))
+            from proteinmpnn.protein_mpnn_utils import ProteinMPNN, ProteinFeatures, CA_ProteinFeatures, EncLayer
+            from proteinmpnn.protein_mpnn_utils import gather_nodes
+        except ImportError as final_error:
+            # All import strategies failed - provide comprehensive error message
+            error_details = [
+                f"Primary import error: {primary_error}",
+                f"Package fallback error: {fallback_error}", 
+                f"Final fallback error: {final_error}",
+                f"Checked paths: {[str(p) for p in sys.path if 'proteinmpnn' in str(p)]}",
+                f"Working directory: {Path.cwd()}",
+                f"Script location: {Path(__file__).resolve()}"
+            ]
+            raise ImportError(
+                f"Could not import ProteinMPNN utilities after trying multiple strategies.\n" +
+                "\n".join(error_details) +
+                f"\n\nPlease ensure:\n"
+                f"1. The proteinmpnn directory exists in the project root\n"
+                f"2. protein_mpnn_utils.py is present in proteinmpnn/\n"
+                f"3. All required dependencies are installed\n"
+                f"4. Python path includes the proteinmpnn directory"
+            )
 
 
 class ProteinMPNNBackboneEncoder(nn.Module):

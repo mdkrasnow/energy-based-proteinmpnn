@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J train_hybrid_dev                   # Job name for development
-#SBATCH -p gpu                               # Use GPU partition
+#SBATCH -p gpu_test                               # Use GPU partition
 #SBATCH --account=ydu_lab                    # Your lab account
 #SBATCH --gres=gpu:1                         # 1 GPU
 #SBATCH -c 8                                 # 8 CPU cores (reduced)
