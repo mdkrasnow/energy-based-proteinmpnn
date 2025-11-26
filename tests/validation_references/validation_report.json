@@ -1,0 +1,32 @@
+{
+  "total_files": 3,
+  "valid_files": 2,
+  "invalid_files": [],
+  "missing_combinations": [
+    "ref_ca_model_v_48_020_5L33_seed42.npz"
+  ],
+  "file_statistics": {
+    "ref_vanilla_v_48_020_5L33_seed42.npz": {
+      "feature_shape": [
+        1,
+        106,
+        128
+      ],
+      "num_layers": 3,
+      "model_type": "vanilla",
+      "structure": "5L33.pdb",
+      "seed": 42
+    },
+    "ref_soluble_v_48_020_5L33_seed42.npz": {
+      "feature_shape": [
+        1,
+        106,
+        128
+      ],
+      "num_layers": 3,
+      "model_type": "soluble",
+      "structure": "5L33.pdb",
+      "seed": 42
+    }
+  }
+}

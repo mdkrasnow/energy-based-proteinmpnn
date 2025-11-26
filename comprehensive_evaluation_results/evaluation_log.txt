@@ -1,0 +1,25 @@
+[2025-11-26 11:24:10] [0.6GB]  Starting comprehensive performance evaluation suite
+[2025-11-26 11:24:10] [0.6GB]  Loading evaluation data...
+[2025-11-26 11:24:10] [0.6GB]  No optimization_data file provided
+[2025-11-26 11:24:10] [0.6GB]  No landscape_data file provided
+[2025-11-26 11:24:10] [0.6GB]  No benchmark_data file provided
+[2025-11-26 11:24:10] [0.6GB]  No evaluation data files provided. Generating mock data for demonstration.
+[2025-11-26 11:24:10] [0.6GB]  Generating mock evaluation data...
+[2025-11-26 11:24:10] [0.6GB]  Generated mock data: 50 optimization runs, 5 landscapes, 60 benchmark problems
+[2025-11-26 11:24:10] [0.6GB]  Limiting optimization_data from 50 to 0 items
+[2025-11-26 11:24:10] [0.6GB]  Limiting landscape_data from 5 to 0 items
+[2025-11-26 11:24:10] [0.6GB]  Limiting benchmark_data from 60 to 0 items
+[2025-11-26 11:24:10] [0.6GB]  Data loading complete. Memory usage: 0.62GB
+[2025-11-26 11:24:10] [0.6GB]  Pipeline interface validation failed: Pipeline config class cannot be instantiated: PipelineConfig.__init__() missing 2 required positional arguments: 'encoder_checkpoint' and 'energy_model_checkpoint' - using mock mode
+[2025-11-26 11:24:10] [0.6GB]  Warning: Limited memory available for pipeline initialization
+[2025-11-26 11:24:10] [0.6GB] [performance_analysis:0.0s] Running comprehensive performance analysis...
+[2025-11-26 11:24:10] [0.6GB] [performance_analysis:0.0s] Performance analysis validation error: Failed to import performance component: cannot import name 'BenchmarkDatasetConfig' from 'evaluation.benchmark_datasets' (/Users/mkrasnow/Desktop/energy-based-proteinmpnn/hybrid/evaluation/benchmark_datasets.py)
+[2025-11-26 11:24:10] [0.6GB] [convergence_analysis:0.0s] Running convergence behavior analysis...
+[2025-11-26 11:24:10] [0.6GB] [convergence_analysis:0.0s] Warning: No optimization data available for convergence analysis
+[2025-11-26 11:24:10] [0.6GB] [adaptive_computation_analysis:0.0s] Running adaptive computation effectiveness analysis...
+[2025-11-26 11:24:10] [0.6GB] [adaptive_computation_analysis:0.0s] Warning: No optimization data available for adaptive computation analysis
+[2025-11-26 11:24:10] [0.6GB] [landscape_quality_analysis:0.0s] Running energy landscape quality analysis...
+[2025-11-26 11:24:10] [0.6GB] [landscape_quality_analysis:0.0s] Warning: No landscape data available for landscape quality analysis
+[2025-11-26 11:24:10] [0.6GB]  Warning: No analysis components completed successfully
+[2025-11-26 11:24:10] [0.6GB]  Evaluation results saved to comprehensive_evaluation_results
+[2025-11-26 11:24:10] [0.6GB]  Comprehensive evaluation completed (with possible component failures)

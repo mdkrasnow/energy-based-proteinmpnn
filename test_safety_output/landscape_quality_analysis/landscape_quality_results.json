@@ -1,0 +1,247 @@
+{
+  "timestamp": "2025-11-26T11:24:10.304015",
+  "landscapes_analyzed": 5,
+  "smoothness_analysis": {
+    "overall_smoothness": {
+      "mean_smoothness": 0.567373451591352,
+      "median_smoothness": 0.5342610609141707,
+      "std_smoothness": 0.07623937974383935,
+      "min_smoothness": 0.4845119249777043,
+      "max_smoothness": 0.6806847524138051,
+      "mean_roughness": 0.4395092837891593,
+      "roughness_smoothness_correlation": 0.4882611520450006
+    },
+    "smoothness_by_temperature": {
+      "1.0": {
+        "mean_smoothness": 0.5044523028599934,
+        "smoothness_count": 1,
+        "temperature": 1.0
+      },
+      "0.8": {
+        "mean_smoothness": 0.632957216791087,
+        "smoothness_count": 1,
+        "temperature": 0.8
+      },
+      "0.6": {
+        "mean_smoothness": 0.6806847524138051,
+        "smoothness_count": 1,
+        "temperature": 0.6
+      },
+      "0.4": {
+        "mean_smoothness": 0.5342610609141707,
+        "smoothness_count": 1,
+        "temperature": 0.4
+      },
+      "0.2": {
+        "mean_smoothness": 0.4845119249777043,
+        "smoothness_count": 1,
+        "temperature": 0.2
+      }
+    },
+    "roughness_distribution": {
+      "very_smooth": 0,
+      "smooth": 1,
+      "moderate": 4,
+      "rough": 0,
+      "very_rough": 0
+    },
+    "smoothness_trends": {
+      "trend_slope": -0.013857691164149456,
+      "trend_correlation": -0.25705527580845244,
+      "trend_significance": 0.6763481000230611,
+      "smoothness_progression": "declining"
+    }
+  },
+  "gradient_coherence_analysis": {
+    "gradient_coherence_stats": {
+      "mean_coherence": 0.8376087662997899,
+      "median_coherence": 0.8041384556693769,
+      "std_coherence": 0.08386873482702654,
+      "high_coherence_fraction": 1.0
+    },
+    "gradient_magnitude_analysis": {
+      "mean_gradient_magnitude": 0.05657360660052911,
+      "max_gradient_magnitude": 0.5557076521524156,
+      "gradient_magnitude_range": [
+        0.02580990980585773,
+        0.09856074034674862
+      ]
+    },
+    "coherence_by_temperature": {
+      "1.0": {
+        "mean_coherence": 0.7849773969801451,
+        "temperature": 1.0,
+        "sample_count": 1
+      },
+      "0.8": {
+        "mean_coherence": 0.8041384556693769,
+        "temperature": 0.8,
+        "sample_count": 1
+      },
+      "0.6": {
+        "mean_coherence": 0.9201252170627354,
+        "temperature": 0.6,
+        "sample_count": 1
+      },
+      "0.4": {
+        "mean_coherence": 0.7288027617866912,
+        "temperature": 0.4,
+        "sample_count": 1
+      },
+      "0.2": {
+        "mean_coherence": 0.95,
+        "temperature": 0.2,
+        "sample_count": 1
+      }
+    },
+    "optimization_guidance_quality": {
+      "mean_guidance_quality": 0.7174350266709858,
+      "excellent_guidance_fraction": 0.4,
+      "poor_guidance_fraction": 0.0
+    }
+  },
+  "basin_connectivity_analysis": {
+    "basin_statistics": {
+      "mean_basin_count": 16.6,
+      "total_basins_detected": 83,
+      "mean_connectivity": 0.7471499564022082,
+      "high_connectivity_fraction": 0.6
+    },
+    "connectivity_analysis": {
+      "connectivity_temperature_correlation": 0.7999999999999999,
+      "connectivity_quality_assessment": {
+        "overall_quality": "good",
+        "quality_consistency": "consistent",
+        "improvement_needed": "False"
+      }
+    },
+    "local_minima_analysis": {
+      "minima_count_distribution": {
+        "very_few": 0,
+        "few": 0,
+        "moderate": 2,
+        "many": 2,
+        "very_many": 1
+      },
+      "minima_temperature_relationship": {
+        "temperature_minima_correlation": -0.9999999999999999,
+        "correlation_significance": 1.4042654220543672e-24,
+        "expected_relationship": "True"
+      }
+    },
+    "basin_depth_distribution": {
+      "mean_depth": 0.5081816501205255,
+      "median_depth": 0.4487793325139364,
+      "max_depth": 1.0258846493479106,
+      "shallow_basins_fraction": 0.0
+    }
+  },
+  "temperature_effects_analysis": {
+    "temperature_progression": {
+      "temperature_range": [
+        0.19999999999999996,
+        1.0
+      ],
+      "sharpness_progression": [
+        2.0,
+        1.8704179582556144,
+        1.5415843048641416,
+        1.0705263761994563,
+        0.9166740981849986
+      ],
+      "sharpening_effectiveness": {
+        "temperature_sharpness_correlation": -0.9999999999999999,
+        "correlation_significance": 1.4042654220543672e-24,
+        "effective_sharpening": "True",
+        "sharpening_quality": "excellent"
+      }
+    },
+    "feature_sharpening": {
+      "medium_temp": {
+        "average_sharpness": 1.1762615930828655,
+        "average_guidance_quality": 0.6982698756397877,
+        "landscape_count": 3
+      },
+      "low_temp": {
+        "average_sharpness": 1.935208979127807,
+        "average_guidance_quality": 0.7461827532177829,
+        "landscape_count": 2
+      }
+    },
+    "temperature_sensitivity": {
+      "mean_sensitivity": 0.4509956364587092,
+      "sensitivity_range": [
+        0.275628441164937,
+        0.5876475547628882
+      ],
+      "high_sensitivity_fraction": 0.0
+    },
+    "optimal_temperature_range": {
+      "optimal_temperature_min": 0.6,
+      "optimal_temperature_max": 0.6,
+      "optimal_temperature_mean": 0.6,
+      "quality_threshold_used": 0.8154096512467168
+    }
+  },
+  "multi_landscape_analysis": {
+    "progression_consistency": {
+      "smoothness_consistency": 0.07623937974383935,
+      "sharpness_progression_trend": {
+        "slope": 0.2966543385686161,
+        "correlation": 0.9825235566423597,
+        "p_value": 0.0027661241444091027,
+        "significant": "True"
+      },
+      "guidance_quality_trend": {
+        "slope": 0.04178288521018484,
+        "correlation": 0.7203309786589082,
+        "p_value": 0.16989689273655953,
+        "significant": "False"
+      },
+      "overall_consistency": "good"
+    },
+    "landscape_transitions": {
+      "smooth_transitions_count": 4,
+      "rough_transitions_count": 0,
+      "transition_quality_scores": [
+        0.10411803039160705,
+        0.08662305251721242,
+        0.13880370612542653,
+        0.09371507107226898
+      ],
+      "problematic_transitions": [],
+      "mean_transition_quality": 0.10581496502662874,
+      "transition_consistency": "good"
+    },
+    "sequence_quality": {
+      "overall_quality_score": 0.6773194782215152,
+      "average_smoothness": 0.567373451591352,
+      "average_guidance_quality": 0.7174350266709858,
+      "average_connectivity": 0.7471499564022082,
+      "shows_expected_progression": "True",
+      "sequence_length": 5,
+      "quality_level": "good"
+    },
+    "improvement_opportunities": []
+  },
+  "overall_quality_assessment": {
+    "landscape_count": 5,
+    "quality_summary": {
+      "mean_smoothness": 0.567373451591352,
+      "mean_guidance_quality": 0.7174350266709858,
+      "mean_connectivity": 0.7471499564022082,
+      "overall_quality_score": 0.6773194782215152
+    },
+    "performance_indicators": {
+      "excellent_landscapes_count": 1,
+      "poor_landscapes_count": 0,
+      "excellent_landscapes_fraction": 0.2,
+      "poor_landscapes_fraction": 0.0,
+      "quality_consistency": "consistent"
+    },
+    "recommendations_summary": {}
+  },
+  "optimization_recommendations": [
+    "Landscape quality analysis shows good overall performance. Consider fine-tuning based on specific optimization requirements."
+  ]
+}

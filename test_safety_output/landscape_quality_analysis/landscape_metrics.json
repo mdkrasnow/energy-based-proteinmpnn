@@ -1,0 +1,127 @@
+[
+  {
+    "landscape_id": "landscape_00",
+    "temperature": 1.0,
+    "landscape_index": 0,
+    "smoothness_score": 0.5044523028599934,
+    "roughness_measure": 0.500661085280755,
+    "gradient_coherence": 0.7849773969801451,
+    "gradient_magnitude_stats": {
+      "mean": 0.07721657459484216,
+      "std": 0.04352155557731832,
+      "max": 0.5557076521524156,
+      "min": 0.010430257667747569
+    },
+    "local_minima_count": 7,
+    "basin_characteristics": {
+      "mean_depth": 0.19937215189829974,
+      "deepest_basin": 0.4890201456726595,
+      "basin_count": 7,
+      "average_width": 0.14608400063012847
+    },
+    "connectivity_score": 0.8850541955088004,
+    "optimization_guidance_quality": 0.6032762546011385,
+    "temperature_sensitivity": 0.49816378905844677,
+    "feature_sharpness": 0.9166740981849986
+  },
+  {
+    "landscape_id": "landscape_01",
+    "temperature": 0.8,
+    "landscape_index": 1,
+    "smoothness_score": 0.632957216791087,
+    "roughness_measure": 0.4896071092343576,
+    "gradient_coherence": 0.8041384556693769,
+    "gradient_magnitude_stats": {
+      "mean": 0.09856074034674862,
+      "std": 0.032772337918024766,
+      "max": 0.3908834504852138,
+      "min": 0.011221721082223383
+    },
+    "local_minima_count": 9,
+    "basin_characteristics": {
+      "mean_depth": 0.37815675534421395,
+      "deepest_basin": 0.5820937131145065,
+      "basin_count": 9,
+      "average_width": 0.09917112226301214
+    },
+    "connectivity_score": 0.8029801301163447,
+    "optimization_guidance_quality": 0.6830074014532591,
+    "temperature_sensitivity": 0.5344170368530237,
+    "feature_sharpness": 1.0705263761994563
+  },
+  {
+    "landscape_id": "landscape_02",
+    "temperature": 0.6,
+    "landscape_index": 2,
+    "smoothness_score": 0.6806847524138051,
+    "roughness_measure": 0.3478186442052731,
+    "gradient_coherence": 0.9201252170627354,
+    "gradient_magnitude_stats": {
+      "mean": 0.0482068417478077,
+      "std": 0.020130485379546932,
+      "max": 0.3676323907414113,
+      "min": 0.01107146089088153
+    },
+    "local_minima_count": 14,
+    "basin_characteristics": {
+      "mean_depth": 0.4487793325139364,
+      "deepest_basin": 0.8235794049587417,
+      "basin_count": 14,
+      "average_width": 0.0638641309146183
+    },
+    "connectivity_score": 0.8257351718193433,
+    "optimization_guidance_quality": 0.8085259708649658,
+    "temperature_sensitivity": 0.3591213604542506,
+    "feature_sharpness": 1.5415843048641416
+  },
+  {
+    "landscape_id": "landscape_03",
+    "temperature": 0.3999999999999999,
+    "landscape_index": 3,
+    "smoothness_score": 0.5342610609141707,
+    "roughness_measure": 0.42247580578306465,
+    "gradient_coherence": 0.7288027617866912,
+    "gradient_magnitude_stats": {
+      "mean": 0.033073966507389356,
+      "std": 0.0074158567517896255,
+      "max": 0.31961329925896675,
+      "min": 0.01834373197694262
+    },
+    "local_minima_count": 19,
+    "basin_characteristics": {
+      "mean_depth": 0.48871536149826683,
+      "deepest_basin": 1.2154085339067962,
+      "basin_count": 19,
+      "average_width": 0.03469557376283029
+    },
+    "connectivity_score": 0.5402240870256962,
+    "optimization_guidance_quality": 0.6773422501137472,
+    "temperature_sensitivity": 0.5876475547628882,
+    "feature_sharpness": 1.8704179582556144
+  },
+  {
+    "landscape_id": "landscape_04",
+    "temperature": 0.19999999999999996,
+    "landscape_index": 4,
+    "smoothness_score": 0.4845119249777043,
+    "roughness_measure": 0.43698377444234626,
+    "gradient_coherence": 0.95,
+    "gradient_magnitude_stats": {
+      "mean": 0.02580990980585773,
+      "std": 0.016445282685696463,
+      "max": 0.04583199422245129,
+      "min": 0.011818961234743826
+    },
+    "local_minima_count": 34,
+    "basin_characteristics": {
+      "mean_depth": 1.0258846493479106,
+      "deepest_basin": 2.4960475895836347,
+      "basin_count": 34,
+      "average_width": -0.009522423067880335
+    },
+    "connectivity_score": 0.6817561975408565,
+    "optimization_guidance_quality": 0.8150232563218187,
+    "temperature_sensitivity": 0.275628441164937,
+    "feature_sharpness": 2.0
+  }
+]

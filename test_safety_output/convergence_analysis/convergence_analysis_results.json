@@ -1,0 +1,174 @@
+{
+  "timestamp": "2025-11-26T11:24:07.943799",
+  "trajectory_count": 5,
+  "convergence_statistics": {
+    "total_trajectories_analyzed": 5,
+    "overall_convergence_rate": 0.8,
+    "mean_convergence_steps": 74.0,
+    "mean_energy_improvement": 6.429370940324558,
+    "mean_step_efficiency": 0.08691086923495618
+  },
+  "convergence_rate_analysis": {
+    "overall_rate": 0.8,
+    "by_problem_type": {
+      "novel_backbone": {
+        "convergence_rate": 0.5,
+        "total_trajectories": 2,
+        "converged_trajectories": 1
+      },
+      "multi_constraint": {
+        "convergence_rate": 1.0,
+        "total_trajectories": 2,
+        "converged_trajectories": 2
+      },
+      "extrapolation": {
+        "convergence_rate": 1.0,
+        "total_trajectories": 1,
+        "converged_trajectories": 1
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "convergence_rate": 0.5,
+        "total_trajectories": 2,
+        "converged_trajectories": 1
+      },
+      "medium": {
+        "convergence_rate": 1.0,
+        "total_trajectories": 2,
+        "converged_trajectories": 2
+      },
+      "hard": {
+        "convergence_rate": 1.0,
+        "total_trajectories": 1,
+        "converged_trajectories": 1
+      }
+    },
+    "by_type_and_difficulty": {
+      "novel_backbone_easy": {
+        "convergence_rate": 0.5,
+        "total_trajectories": 2,
+        "converged_trajectories": 1
+      },
+      "multi_constraint_medium": {
+        "convergence_rate": 1.0,
+        "total_trajectories": 2,
+        "converged_trajectories": 2
+      },
+      "extrapolation_hard": {
+        "convergence_rate": 1.0,
+        "total_trajectories": 1,
+        "converged_trajectories": 1
+      }
+    },
+    "convergence_step_statistics": {
+      "mean_steps_to_convergence": 74.0,
+      "median_steps_to_convergence": 71.5,
+      "std_steps_to_convergence": 18.907670401189037,
+      "min_steps_to_convergence": 55,
+      "max_steps_to_convergence": 98
+    }
+  },
+  "energy_progression_analysis": {
+    "landscape_utilization": {
+      "mean_landscapes_used": 4.6,
+      "median_landscapes_used": 5.0,
+      "landscape_usage_distribution": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0,
+        "5": 4
+      }
+    },
+    "energy_improvement_patterns": {
+      "mean_total_improvement": 6.429370940324558,
+      "median_total_improvement": 5.6819850411176445,
+      "std_total_improvement": 1.6566025741888313,
+      "improvement_success_correlation": 0.7071067811865475
+    },
+    "landscape_transition_analysis": {
+      "mean_transition_quality": 0.96,
+      "median_transition_quality": 1.0,
+      "poor_transitions_fraction": 0.0
+    }
+  },
+  "step_efficiency_analysis": {
+    "step_efficiency_statistics": {
+      "mean_step_efficiency": 0.08691086923495618,
+      "median_step_efficiency": 0.0853279901031154,
+      "std_step_efficiency": 0.010457600897437696,
+      "efficiency_range": [
+        0.07761362119126348,
+        0.10630757979768253
+      ]
+    },
+    "efficiency_by_problem_type": {
+      "novel_backbone": {
+        "mean_efficiency": 0.09686136713820775,
+        "median_efficiency": 0.09686136713820775,
+        "efficiency_count": 2
+      },
+      "multi_constraint": {
+        "mean_efficiency": 0.08147080564718945,
+        "median_efficiency": 0.08147080564718945,
+        "efficiency_count": 2
+      },
+      "extrapolation": {
+        "mean_efficiency": 0.0778900006039865,
+        "median_efficiency": 0.0778900006039865,
+        "efficiency_count": 1
+      }
+    },
+    "efficiency_vs_convergence": {
+      "correlation": -0.7071067811865475,
+      "p_value": 0.18169011381620928,
+      "significant": "False"
+    },
+    "resource_utilization_analysis": {
+      "mean_steps_all": 76.8,
+      "mean_steps_converged": 85.5,
+      "step_overhead_unconverged": -8.700000000000003
+    }
+  },
+  "trajectory_quality_analysis": {
+    "monotonicity_analysis": {
+      "mean_monotonicity": 0.8500869748212553,
+      "median_monotonicity": 0.8380952380952381,
+      "high_monotonicity_fraction": 1.0
+    },
+    "gradient_coherence_analysis": {
+      "mean_coherence": 0.8626470940530346,
+      "median_coherence": 0.8514851485148514,
+      "high_coherence_fraction": 1.0
+    },
+    "oscillation_analysis": {
+      "mean_oscillation": 0.11938452927627068,
+      "median_oscillation": 0.13114754098360656,
+      "high_oscillation_fraction": 0.0
+    },
+    "quality_success_correlation": {
+      "monotonicity_success_correlation": -0.7071067811865475,
+      "p_value": 0.18169011381620928
+    }
+  },
+  "failure_mode_analysis": {
+    "failure_rate": 0.2,
+    "failure_mode_distribution": {
+      "unknown": 1.0
+    },
+    "failure_patterns_by_type": {
+      "novel_backbone": {
+        "unknown": 1
+      }
+    },
+    "failure_step_analysis": {
+      "mean_steps_before_failure": 42.0,
+      "median_steps_before_failure": 42.0,
+      "early_failure_fraction": 0.0
+    }
+  },
+  "performance_recommendations": [
+    "Convergence analysis shows good optimization performance. Consider fine-tuning parameters for marginal improvements based on specific problem requirements."
+  ]
+}

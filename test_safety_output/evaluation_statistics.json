@@ -1,0 +1,26 @@
+{
+  "start_time": 1764174246.652591,
+  "end_time": 1764174250.306636,
+  "total_duration": 3.6540451049804688,
+  "components_run": [
+    "convergence_analysis",
+    "adaptive_computation",
+    "landscape_quality"
+  ],
+  "components_failed": [
+    "performance_analysis"
+  ],
+  "data_files_loaded": {},
+  "memory_usage": [
+    {
+      "stage": "data_loading_start",
+      "memory_gb": 0.3417510986328125
+    },
+    {
+      "stage": "data_loading_complete",
+      "memory_gb": 0.3428955078125
+    }
+  ],
+  "validation_errors": {},
+  "timeout_events": []
+}

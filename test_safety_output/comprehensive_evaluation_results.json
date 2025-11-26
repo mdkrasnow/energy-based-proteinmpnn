@@ -1,0 +1,567 @@
+{
+  "timestamp": "2025-11-26T11:24:10.306637",
+  "config": {
+    "run_performance_analysis": true,
+    "run_convergence_analysis": true,
+    "run_adaptive_computation_analysis": true,
+    "run_landscape_quality_analysis": true,
+    "data_directory": null,
+    "optimization_data_file": null,
+    "landscape_data_file": null,
+    "benchmark_data_file": null,
+    "pipeline_config_file": null,
+    "performance_config": null,
+    "convergence_config": null,
+    "adaptive_computation_config": null,
+    "landscape_quality_config": null,
+    "output_directory": "./test_safety_output",
+    "generate_unified_report": true,
+    "save_individual_results": true,
+    "generate_visualizations": false,
+    "max_problems_per_analysis": 5,
+    "parallel_analysis": false,
+    "memory_limit_gb": 1.0,
+    "timeout_minutes": 1,
+    "batch_size": 100,
+    "enable_input_validation": true,
+    "strict_interface_validation": true,
+    "report_format": "json",
+    "include_raw_data": false,
+    "verbose_logging": false
+  },
+  "evaluation_summary": {
+    "evaluation_timestamp": "2025-11-26T11:24:10.306622",
+    "components_attempted": 4,
+    "components_successful": 3,
+    "components_failed": 1,
+    "total_evaluation_time_minutes": 0.0,
+    "overall_performance": "good",
+    "key_findings": [
+      "Optimization convergence rate: 0.0%",
+      "Adaptive computation benefit: +50.0%",
+      "Energy landscape quality score: 0.68"
+    ],
+    "critical_issues": [
+      "1 analysis components failed"
+    ]
+  },
+  "performance_analysis_result": null,
+  "convergence_analysis_result": {
+    "serialization_error": "first argument must be callable or None",
+    "result_type": "ConvergenceAnalysisResult",
+    "result_str": "ConvergenceAnalysisResult(timestamp='2025-11-26T11:24:07.943799', config=ConvergenceAnalysisConfig(analyze_convergence_rates=True, analyze_energy_progression=True, analyze_step_efficiency=True, analyze_trajectory_quality=True, analyze_failure_modes=True, min_trajectory_length=5, energy_convergence_threshold=0.0001, gradient_analysis_window=5, step_efficiency_window=10, convergence_patience=10, energy_improvement_threshold=0.001, oscillation_detection_threshold=0.1, generate_trajectory_plots=False, generate_summary_plots=False, max_trajectories_plot=20, save_detailed_analysis=True, include_statistical_tests=True), trajectory_count=5, convergence_statistics={'total_trajectories_analyzed': 5, 'overall_convergence_rate': 0.8, 'mean_convergence_steps': 74.0, 'mean_energy_improvement': 6.429370940324558, 'mean_step_efficiency': 0.08691086923495618}, convergence_rate_analysis={'overall_rate': 0.8, 'by_problem_type': {'novel_backbone': {'convergence_rate': 0.5, 'total_trajectories': 2, 'conver"
+  },
+  "adaptive_computation_result": {
+    "timestamp": "2025-11-26T11:24:08.938609",
+    "config": {
+      "analyze_allocation_patterns": true,
+      "analyze_effectiveness": true,
+      "analyze_difficulty_assessment": true,
+      "analyze_resource_utilization": true,
+      "analyze_comparative_performance": true,
+      "min_samples_per_group": 5,
+      "significance_threshold": 0.05,
+      "effect_size_threshold": 0.3,
+      "bootstrap_samples": 1000,
+      "fixed_budget_baseline": 200,
+      "resource_efficiency_window": 10,
+      "allocation_granularity": "difficulty_level",
+      "success_rate_improvement_threshold": 0.1,
+      "resource_waste_threshold": 0.3,
+      "generate_allocation_plots": false,
+      "generate_effectiveness_plots": false,
+      "max_problems_plot": 100,
+      "save_detailed_analysis": true,
+      "include_statistical_tests": true
+    },
+    "problem_count": 5,
+    "allocation_pattern_analysis": {
+      "allocation_distribution": {
+        "mean_total_allocation": 76.8,
+        "median_total_allocation": 65.0,
+        "std_total_allocation": 26.663833182796505,
+        "mean_initial_allocation": 56.4,
+        "mean_extensions": 1.2,
+        "extension_frequency": 0.6
+      },
+      "allocation_by_difficulty": {
+        "easy": {
+          "mean_allocation": 53.5,
+          "median_allocation": 53.5,
+          "problem_count": 2
+        },
+        "medium": {
+          "mean_allocation": 83.5,
+          "median_allocation": 83.5,
+          "problem_count": 2
+        },
+        "hard": {
+          "mean_allocation": 110.0,
+          "median_allocation": 110.0,
+          "problem_count": 1
+        }
+      },
+      "allocation_by_type": {
+        "novel_backbone": {
+          "mean_allocation": 53.5,
+          "median_allocation": 53.5,
+          "problem_count": 2
+        },
+        "multi_constraint": {
+          "mean_allocation": 83.5,
+          "median_allocation": 83.5,
+          "problem_count": 2
+        },
+        "extrapolation": {
+          "mean_allocation": 110.0,
+          "median_allocation": 110.0,
+          "problem_count": 1
+        }
+      },
+      "extension_patterns": {
+        "easy_novel_backbone": {
+          "mean_extensions": 2.0,
+          "max_extensions": 2,
+          "problems_with_extensions": 1
+        },
+        "medium_multi_constraint": {
+          "mean_extensions": 2.0,
+          "max_extensions": 3,
+          "problems_with_extensions": 2
+        }
+      },
+      "allocation_trends": {}
+    },
+    "effectiveness_analysis": {
+      "success_rate_by_allocation": {
+        "bin_1": {
+          "success_rate": 1.0,
+          "mean_efficiency": 0.11105590905638978,
+          "problem_count": 1
+        },
+        "bin_2": {
+          "success_rate": 1.0,
+          "mean_efficiency": 0.09006005269264988,
+          "problem_count": 2
+        },
+        "bin_5": {
+          "success_rate": 1.0,
+          "mean_efficiency": 0.07867385125672785,
+          "problem_count": 1
+        }
+      },
+      "efficiency_analysis": {
+        "mean_efficiency_successful": 0.09246246642460434,
+        "mean_efficiency_failed": 0.07923717120519155,
+        "mean_allocation_successful": 68.5,
+        "mean_allocation_failed": 110.0
+      },
+      "extension_effectiveness": {
+        "extended_success_rate": 1.0,
+        "non_extended_success_rate": 0.5,
+        "extension_benefit": 0.5,
+        "problems_with_extensions": 3,
+        "problems_without_extensions": 2
+      },
+      "allocation_success_correlation": {
+        "correlation": -0.7071067811865475,
+        "p_value": 0.18169011381620928,
+        "significant": "False",
+        "sample_size": 5,
+        "sufficient_sample_size": true
+      }
+    },
+    "difficulty_assessment_analysis": {
+      "prediction_accuracy": {
+        "message": "No difficulty predictions available for analysis"
+      },
+      "difficulty_allocation_correlation": {},
+      "misallocation_analysis": {}
+    },
+    "resource_utilization_analysis": {
+      "utilization_statistics": {
+        "mean_utilization": 0.8374294042899054,
+        "median_utilization": 0.8301886792452831,
+        "std_utilization": 0.033940680033660006,
+        "min_utilization": 0.8,
+        "max_utilization": 0.8809523809523809
+      },
+      "utilization_by_success": {
+        "mean_utilization_successful": 0.8286049371805635,
+        "mean_utilization_failed": 0.8727272727272727,
+        "utilization_difference": -0.04412233554670919
+      },
+      "utilization_efficiency_correlation": {
+        "correlation": 0.09999999999999999,
+        "p_value": 0.8728885715695383,
+        "significant": "False"
+      },
+      "waste_analysis": {
+        "low_utilization_count": 0,
+        "low_utilization_rate": 0.0,
+        "wasted_resources": 0,
+        "waste_by_difficulty": {}
+      }
+    },
+    "comparative_performance_analysis": {
+      "fixed_budget_comparison": {
+        "fixed_budget_size": 200,
+        "fixed_budget_successes": 4,
+        "fixed_budget_success_rate": 0.8,
+        "adaptive_successes": 4,
+        "adaptive_success_rate": 0.8,
+        "success_rate_improvement": 0.0
+      },
+      "adaptive_vs_fixed_success_rates": {},
+      "computational_efficiency_comparison": {
+        "fixed_budget_efficiency": 0.004,
+        "adaptive_efficiency": 0.010416666666666666,
+        "efficiency_ratio": 2.6041666666666665,
+        "total_cost_fixed": 1000,
+        "total_cost_adaptive": 384,
+        "cost_difference": -616
+      },
+      "cost_benefit_analysis": {
+        "additional_successes": 0,
+        "additional_cost": -616,
+        "cost_per_additional_success": Infinity,
+        "break_even_point": null
+      }
+    },
+    "computational_efficiency_metrics": {
+      "overall_efficiency": {
+        "mean_allocation_efficiency": 0.08981740738072179,
+        "median_allocation_efficiency": 0.08888678220800598,
+        "mean_resource_utilization": 0.8374294042899054,
+        "combined_efficiency_score": 0.0752157379577016
+      },
+      "efficiency_distribution": {
+        "very_low": 0,
+        "low": 0,
+        "medium": 4,
+        "high": 1
+      },
+      "top_performers": {
+        "count": 1,
+        "mean_efficiency": 0.11105590905638978,
+        "mean_allocation": 42.0,
+        "success_rate": 1.0
+      },
+      "efficiency_trends": {}
+    },
+    "optimization_recommendations": [
+      "Adaptive extensions are effective (+50.0% success rate). Consider more aggressive extension policies for difficult problems.",
+      "Adaptive allocation is highly efficient (ratio: 2.60). Consider expanding adaptive strategies to more problem types."
+    ]
+  },
+  "landscape_quality_result": {
+    "timestamp": "2025-11-26T11:24:10.304015",
+    "config": {
+      "analyze_smoothness": true,
+      "analyze_gradient_coherence": true,
+      "analyze_basin_connectivity": true,
+      "analyze_temperature_effects": true,
+      "analyze_multi_landscape_progression": true,
+      "smoothness_window_size": 5,
+      "gradient_analysis_resolution": 50,
+      "noise_detection_threshold": 0.1,
+      "roughness_metric": "variance",
+      "local_minima_prominence": 0.01,
+      "basin_depth_threshold": 0.1,
+      "connectivity_sample_size": 100,
+      "escape_barrier_samples": 20,
+      "temperature_range": [
+        0.1,
+        2.0
+      ],
+      "temperature_steps": 20,
+      "feature_resolution_metric": "gradient_sharpness",
+      "landscape_consistency_metric": "correlation",
+      "transition_smoothness_threshold": 0.8,
+      "progression_quality_threshold": 0.7,
+      "generate_landscape_plots": false,
+      "generate_gradient_plots": false,
+      "max_landscapes_plot": 5,
+      "contour_resolution": 100,
+      "max_sample_points": 10000,
+      "parallel_analysis": false,
+      "memory_limit_mb": 1000,
+      "save_detailed_analysis": true,
+      "include_statistical_tests": true
+    },
+    "landscapes_analyzed": 5,
+    "smoothness_analysis": {
+      "overall_smoothness": {
+        "mean_smoothness": 0.567373451591352,
+        "median_smoothness": 0.5342610609141707,
+        "std_smoothness": 0.07623937974383935,
+        "min_smoothness": 0.4845119249777043,
+        "max_smoothness": 0.6806847524138051,
+        "mean_roughness": 0.4395092837891593,
+        "roughness_smoothness_correlation": 0.4882611520450006
+      },
+      "smoothness_by_temperature": {
+        "1.0": {
+          "mean_smoothness": 0.5044523028599934,
+          "smoothness_count": 1,
+          "temperature": 1.0
+        },
+        "0.8": {
+          "mean_smoothness": 0.632957216791087,
+          "smoothness_count": 1,
+          "temperature": 0.8
+        },
+        "0.6": {
+          "mean_smoothness": 0.6806847524138051,
+          "smoothness_count": 1,
+          "temperature": 0.6
+        },
+        "0.4": {
+          "mean_smoothness": 0.5342610609141707,
+          "smoothness_count": 1,
+          "temperature": 0.4
+        },
+        "0.2": {
+          "mean_smoothness": 0.4845119249777043,
+          "smoothness_count": 1,
+          "temperature": 0.2
+        }
+      },
+      "roughness_distribution": {
+        "very_smooth": 0,
+        "smooth": 1,
+        "moderate": 4,
+        "rough": 0,
+        "very_rough": 0
+      },
+      "smoothness_trends": {
+        "trend_slope": -0.013857691164149456,
+        "trend_correlation": -0.25705527580845244,
+        "trend_significance": 0.6763481000230611,
+        "smoothness_progression": "declining"
+      }
+    },
+    "gradient_coherence_analysis": {
+      "gradient_coherence_stats": {
+        "mean_coherence": 0.8376087662997899,
+        "median_coherence": 0.8041384556693769,
+        "std_coherence": 0.08386873482702654,
+        "high_coherence_fraction": 1.0
+      },
+      "gradient_magnitude_analysis": {
+        "mean_gradient_magnitude": 0.05657360660052911,
+        "max_gradient_magnitude": 0.5557076521524156,
+        "gradient_magnitude_range": [
+          0.02580990980585773,
+          0.09856074034674862
+        ]
+      },
+      "coherence_by_temperature": {
+        "1.0": {
+          "mean_coherence": 0.7849773969801451,
+          "temperature": 1.0,
+          "sample_count": 1
+        },
+        "0.8": {
+          "mean_coherence": 0.8041384556693769,
+          "temperature": 0.8,
+          "sample_count": 1
+        },
+        "0.6": {
+          "mean_coherence": 0.9201252170627354,
+          "temperature": 0.6,
+          "sample_count": 1
+        },
+        "0.4": {
+          "mean_coherence": 0.7288027617866912,
+          "temperature": 0.4,
+          "sample_count": 1
+        },
+        "0.2": {
+          "mean_coherence": 0.95,
+          "temperature": 0.2,
+          "sample_count": 1
+        }
+      },
+      "optimization_guidance_quality": {
+        "mean_guidance_quality": 0.7174350266709858,
+        "excellent_guidance_fraction": 0.4,
+        "poor_guidance_fraction": 0.0
+      }
+    },
+    "basin_connectivity_analysis": {
+      "basin_statistics": {
+        "mean_basin_count": 16.6,
+        "total_basins_detected": 83,
+        "mean_connectivity": 0.7471499564022082,
+        "high_connectivity_fraction": 0.6
+      },
+      "connectivity_analysis": {
+        "connectivity_temperature_correlation": 0.7999999999999999,
+        "connectivity_quality_assessment": {
+          "overall_quality": "good",
+          "quality_consistency": "consistent",
+          "improvement_needed": "False"
+        }
+      },
+      "local_minima_analysis": {
+        "minima_count_distribution": {
+          "very_few": 0,
+          "few": 0,
+          "moderate": 2,
+          "many": 2,
+          "very_many": 1
+        },
+        "minima_temperature_relationship": {
+          "temperature_minima_correlation": -0.9999999999999999,
+          "correlation_significance": 1.4042654220543672e-24,
+          "expected_relationship": "True"
+        }
+      },
+      "basin_depth_distribution": {
+        "mean_depth": 0.5081816501205255,
+        "median_depth": 0.4487793325139364,
+        "max_depth": 1.0258846493479106,
+        "shallow_basins_fraction": 0.0
+      }
+    },
+    "temperature_effects_analysis": {
+      "temperature_progression": {
+        "temperature_range": [
+          0.19999999999999996,
+          1.0
+        ],
+        "sharpness_progression": [
+          2.0,
+          1.8704179582556144,
+          1.5415843048641416,
+          1.0705263761994563,
+          0.9166740981849986
+        ],
+        "sharpening_effectiveness": {
+          "temperature_sharpness_correlation": -0.9999999999999999,
+          "correlation_significance": 1.4042654220543672e-24,
+          "effective_sharpening": "True",
+          "sharpening_quality": "excellent"
+        }
+      },
+      "feature_sharpening": {
+        "medium_temp": {
+          "average_sharpness": 1.1762615930828655,
+          "average_guidance_quality": 0.6982698756397877,
+          "landscape_count": 3
+        },
+        "low_temp": {
+          "average_sharpness": 1.935208979127807,
+          "average_guidance_quality": 0.7461827532177829,
+          "landscape_count": 2
+        }
+      },
+      "temperature_sensitivity": {
+        "mean_sensitivity": 0.4509956364587092,
+        "sensitivity_range": [
+          0.275628441164937,
+          0.5876475547628882
+        ],
+        "high_sensitivity_fraction": 0.0
+      },
+      "optimal_temperature_range": {
+        "optimal_temperature_min": 0.6,
+        "optimal_temperature_max": 0.6,
+        "optimal_temperature_mean": 0.6,
+        "quality_threshold_used": 0.8154096512467168
+      }
+    },
+    "multi_landscape_analysis": {
+      "progression_consistency": {
+        "smoothness_consistency": 0.07623937974383935,
+        "sharpness_progression_trend": {
+          "slope": 0.2966543385686161,
+          "correlation": 0.9825235566423597,
+          "p_value": 0.0027661241444091027,
+          "significant": "True"
+        },
+        "guidance_quality_trend": {
+          "slope": 0.04178288521018484,
+          "correlation": 0.7203309786589082,
+          "p_value": 0.16989689273655953,
+          "significant": "False"
+        },
+        "overall_consistency": "good"
+      },
+      "landscape_transitions": {
+        "smooth_transitions_count": 4,
+        "rough_transitions_count": 0,
+        "transition_quality_scores": [
+          0.10411803039160705,
+          0.08662305251721242,
+          0.13880370612542653,
+          0.09371507107226898
+        ],
+        "problematic_transitions": [],
+        "mean_transition_quality": 0.10581496502662874,
+        "transition_consistency": "good"
+      },
+      "sequence_quality": {
+        "overall_quality_score": 0.6773194782215152,
+        "average_smoothness": 0.567373451591352,
+        "average_guidance_quality": 0.7174350266709858,
+        "average_connectivity": 0.7471499564022082,
+        "shows_expected_progression": "True",
+        "sequence_length": 5,
+        "quality_level": "good"
+      },
+      "improvement_opportunities": []
+    },
+    "overall_quality_assessment": {
+      "landscape_count": 5,
+      "quality_summary": {
+        "mean_smoothness": 0.567373451591352,
+        "mean_guidance_quality": 0.7174350266709858,
+        "mean_connectivity": 0.7471499564022082,
+        "overall_quality_score": 0.6773194782215152
+      },
+      "performance_indicators": {
+        "excellent_landscapes_count": 1,
+        "poor_landscapes_count": 0,
+        "excellent_landscapes_fraction": 0.2,
+        "poor_landscapes_fraction": 0.0,
+        "quality_consistency": "consistent"
+      },
+      "recommendations_summary": {}
+    },
+    "optimization_recommendations": [
+      "Landscape quality analysis shows good overall performance. Consider fine-tuning based on specific optimization requirements."
+    ]
+  },
+  "unified_recommendations": [
+    "2/3 analysis components completed. Some analyses failed (1), but core evaluation is available.",
+    "Low convergence rate combined with adaptive computation analysis suggests optimizing resource allocation strategies and convergence criteria."
+  ],
+  "evaluation_statistics": {
+    "start_time": 1764174246.652591,
+    "end_time": 1764174250.306636,
+    "total_duration": 3.6540451049804688,
+    "components_run": [
+      "convergence_analysis",
+      "adaptive_computation",
+      "landscape_quality"
+    ],
+    "components_failed": [
+      "performance_analysis"
+    ],
+    "data_files_loaded": {},
+    "memory_usage": [
+      {
+        "stage": "data_loading_start",
+        "memory_gb": 0.3417510986328125
+      },
+      {
+        "stage": "data_loading_complete",
+        "memory_gb": 0.3428955078125
+      }
+    ],
+    "validation_errors": {},
+    "timeout_events": []
+  }
+}

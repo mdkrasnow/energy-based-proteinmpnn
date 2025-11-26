@@ -1,0 +1,13 @@
+{
+  "evaluation_timestamp": "2025-11-26T11:24:10.315366",
+  "components_attempted": 1,
+  "components_successful": 0,
+  "components_failed": 1,
+  "total_evaluation_time_minutes": 0.0,
+  "overall_performance": "poor",
+  "key_findings": [],
+  "critical_issues": [
+    "1 analysis components failed",
+    "No key performance metrics extracted from analyses"
+  ]
+}

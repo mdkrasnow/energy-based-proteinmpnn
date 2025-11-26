@@ -1,0 +1,74 @@
+{
+  "timestamp": "2025-11-26T11:24:10.315373",
+  "config": {
+    "run_performance_analysis": true,
+    "run_convergence_analysis": true,
+    "run_adaptive_computation_analysis": true,
+    "run_landscape_quality_analysis": true,
+    "data_directory": null,
+    "optimization_data_file": null,
+    "landscape_data_file": null,
+    "benchmark_data_file": null,
+    "pipeline_config_file": null,
+    "performance_config": null,
+    "convergence_config": null,
+    "adaptive_computation_config": null,
+    "landscape_quality_config": null,
+    "output_directory": "./comprehensive_evaluation_results",
+    "generate_unified_report": true,
+    "save_individual_results": true,
+    "generate_visualizations": true,
+    "max_problems_per_analysis": 0,
+    "parallel_analysis": false,
+    "memory_limit_gb": -1,
+    "timeout_minutes": 0,
+    "batch_size": 100,
+    "enable_input_validation": true,
+    "strict_interface_validation": true,
+    "report_format": "json",
+    "include_raw_data": false,
+    "verbose_logging": true
+  },
+  "evaluation_summary": {
+    "evaluation_timestamp": "2025-11-26T11:24:10.315366",
+    "components_attempted": 1,
+    "components_successful": 0,
+    "components_failed": 1,
+    "total_evaluation_time_minutes": 0.0,
+    "overall_performance": "poor",
+    "key_findings": [],
+    "critical_issues": [
+      "1 analysis components failed",
+      "No key performance metrics extracted from analyses"
+    ]
+  },
+  "performance_analysis_result": null,
+  "convergence_analysis_result": null,
+  "adaptive_computation_result": null,
+  "landscape_quality_result": null,
+  "unified_recommendations": [
+    "Most analysis components failed. Review system configuration and data availability."
+  ],
+  "evaluation_statistics": {
+    "start_time": 1764174250.3093278,
+    "end_time": 1764174250.315372,
+    "total_duration": 0.006044149398803711,
+    "components_run": [],
+    "components_failed": [
+      "performance_analysis"
+    ],
+    "data_files_loaded": {},
+    "memory_usage": [
+      {
+        "stage": "data_loading_start",
+        "memory_gb": 0.6179351806640625
+      },
+      {
+        "stage": "data_loading_complete",
+        "memory_gb": 0.6179351806640625
+      }
+    ],
+    "validation_errors": {},
+    "timeout_events": []
+  }
+}

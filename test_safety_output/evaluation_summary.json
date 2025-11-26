@@ -1,0 +1,16 @@
+{
+  "evaluation_timestamp": "2025-11-26T11:24:10.306622",
+  "components_attempted": 4,
+  "components_successful": 3,
+  "components_failed": 1,
+  "total_evaluation_time_minutes": 0.0,
+  "overall_performance": "good",
+  "key_findings": [
+    "Optimization convergence rate: 0.0%",
+    "Adaptive computation benefit: +50.0%",
+    "Energy landscape quality score: 0.68"
+  ],
+  "critical_issues": [
+    "1 analysis components failed"
+  ]
+}

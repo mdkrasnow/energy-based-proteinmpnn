@@ -17,19 +17,25 @@ Look at what we have completed so far in the @documentation/implementation-todo.
 
 ## Phase 4: Comprehensive Evaluation
 
-### 4.1 Benchmark Dataset Preparation
-- [ ] **Create evaluation datasets**:
-  - [ ] Curate novel backbone designs (hallucinated structures)
-  - [ ] Prepare multi-constraint problems (binding + stability)
-  - [ ] Include length/complexity extrapolation test cases
-  - [ ] Add challenging design targets from literature
-  - [ ] Create ground truth labels for validation
 
-- [ ] **Baseline comparisons**:
-  - [ ] Implement ProteinMPNN baseline evaluation
-  - [ ] Add RFdiffusion comparison (if available)
-  - [ ] Include Rosetta design baseline
-  - [ ] Create unified evaluation framework for fair comparison
+
+## Phase 5: Production & Optimization (Weeks 17-20)
+
+### 5.1 Performance Optimization
+- [ ] **Memory and speed optimization**:
+  - [ ] Profile memory usage and identify bottlenecks
+  - [ ] Implement gradient checkpointing for large proteins
+  - [ ] Add model quantization and pruning options
+  - [ ] Optimize batch processing and data loading
+  - [ ] Include distributed training support
+
+- [ ] **Scalability improvements**:
+  - [ ] Test on large proteins (>500 residues)
+  - [ ] Implement chunked processing for memory efficiency
+  - [ ] Add multi-GPU support for parallel optimization
+  - [ ] Include cloud deployment configurations
+  - [ ] Add monitoring and resource management
+
 
 
 </step-to-complete>
@@ -47,21 +53,20 @@ Check the changes made, which complete the following step of our implementation 
 
 <step>
 
-## Phase 4: Comprehensive Evaluation
+### 4.3 Performance Analysis
+- [ ] **Comprehensive evaluation study**:
+  - [ ] Run systematic evaluation on all benchmark tasks
+  - [ ] Compare success rates across different design challenges
+  - [ ] Analyze failure modes and edge cases
+  - [ ] Document performance vs computational cost trade-offs
+  - [ ] Generate publication-ready results and figures
 
-### 4.1 Benchmark Dataset Preparation
-- [ ] **Create evaluation datasets**:
-  - [ ] Curate novel backbone designs (hallucinated structures)
-  - [ ] Prepare multi-constraint problems (binding + stability)
-  - [ ] Include length/complexity extrapolation test cases
-  - [ ] Add challenging design targets from literature
-  - [ ] Create ground truth labels for validation
+- [ ] **Optimization analysis**:
+  - [ ] Study convergence behavior on different problem types
+  - [ ] Analyze adaptive computation effectiveness
+  - [ ] Investigate energy landscape quality and smoothness
+  - [ ] Document hyperparameter sensitivity and tuning guidelines
 
-- [ ] **Baseline comparisons**:
-  - [ ] Implement ProteinMPNN baseline evaluation
-  - [ ] Add RFdiffusion comparison (if available)
-  - [ ] Include Rosetta design baseline
-  - [ ] Create unified evaluation framework for fair comparison
 
 </step>
 

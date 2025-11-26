@@ -1,0 +1,182 @@
+{
+  "timestamp": "2025-11-26T11:24:08.938609",
+  "problem_count": 5,
+  "allocation_pattern_analysis": {
+    "allocation_distribution": {
+      "mean_total_allocation": 76.8,
+      "median_total_allocation": 65.0,
+      "std_total_allocation": 26.663833182796505,
+      "mean_initial_allocation": 56.4,
+      "mean_extensions": 1.2,
+      "extension_frequency": 0.6
+    },
+    "allocation_by_difficulty": {
+      "easy": {
+        "mean_allocation": 53.5,
+        "median_allocation": 53.5,
+        "problem_count": 2
+      },
+      "medium": {
+        "mean_allocation": 83.5,
+        "median_allocation": 83.5,
+        "problem_count": 2
+      },
+      "hard": {
+        "mean_allocation": 110.0,
+        "median_allocation": 110.0,
+        "problem_count": 1
+      }
+    },
+    "allocation_by_type": {
+      "novel_backbone": {
+        "mean_allocation": 53.5,
+        "median_allocation": 53.5,
+        "problem_count": 2
+      },
+      "multi_constraint": {
+        "mean_allocation": 83.5,
+        "median_allocation": 83.5,
+        "problem_count": 2
+      },
+      "extrapolation": {
+        "mean_allocation": 110.0,
+        "median_allocation": 110.0,
+        "problem_count": 1
+      }
+    },
+    "extension_patterns": {
+      "easy_novel_backbone": {
+        "mean_extensions": 2.0,
+        "max_extensions": 2,
+        "problems_with_extensions": 1
+      },
+      "medium_multi_constraint": {
+        "mean_extensions": 2.0,
+        "max_extensions": 3,
+        "problems_with_extensions": 2
+      }
+    },
+    "allocation_trends": {}
+  },
+  "effectiveness_analysis": {
+    "success_rate_by_allocation": {
+      "bin_1": {
+        "success_rate": 1.0,
+        "mean_efficiency": 0.11105590905638978,
+        "problem_count": 1
+      },
+      "bin_2": {
+        "success_rate": 1.0,
+        "mean_efficiency": 0.09006005269264988,
+        "problem_count": 2
+      },
+      "bin_5": {
+        "success_rate": 1.0,
+        "mean_efficiency": 0.07867385125672785,
+        "problem_count": 1
+      }
+    },
+    "efficiency_analysis": {
+      "mean_efficiency_successful": 0.09246246642460434,
+      "mean_efficiency_failed": 0.07923717120519155,
+      "mean_allocation_successful": 68.5,
+      "mean_allocation_failed": 110.0
+    },
+    "extension_effectiveness": {
+      "extended_success_rate": 1.0,
+      "non_extended_success_rate": 0.5,
+      "extension_benefit": 0.5,
+      "problems_with_extensions": 3,
+      "problems_without_extensions": 2
+    },
+    "allocation_success_correlation": {
+      "correlation": -0.7071067811865475,
+      "p_value": 0.18169011381620928,
+      "significant": "False",
+      "sample_size": 5,
+      "sufficient_sample_size": true
+    }
+  },
+  "difficulty_assessment_analysis": {
+    "prediction_accuracy": {
+      "message": "No difficulty predictions available for analysis"
+    },
+    "difficulty_allocation_correlation": {},
+    "misallocation_analysis": {}
+  },
+  "resource_utilization_analysis": {
+    "utilization_statistics": {
+      "mean_utilization": 0.8374294042899054,
+      "median_utilization": 0.8301886792452831,
+      "std_utilization": 0.033940680033660006,
+      "min_utilization": 0.8,
+      "max_utilization": 0.8809523809523809
+    },
+    "utilization_by_success": {
+      "mean_utilization_successful": 0.8286049371805635,
+      "mean_utilization_failed": 0.8727272727272727,
+      "utilization_difference": -0.04412233554670919
+    },
+    "utilization_efficiency_correlation": {
+      "correlation": 0.09999999999999999,
+      "p_value": 0.8728885715695383,
+      "significant": "False"
+    },
+    "waste_analysis": {
+      "low_utilization_count": 0,
+      "low_utilization_rate": 0.0,
+      "wasted_resources": 0,
+      "waste_by_difficulty": {}
+    }
+  },
+  "comparative_performance_analysis": {
+    "fixed_budget_comparison": {
+      "fixed_budget_size": 200,
+      "fixed_budget_successes": 4,
+      "fixed_budget_success_rate": 0.8,
+      "adaptive_successes": 4,
+      "adaptive_success_rate": 0.8,
+      "success_rate_improvement": 0.0
+    },
+    "adaptive_vs_fixed_success_rates": {},
+    "computational_efficiency_comparison": {
+      "fixed_budget_efficiency": 0.004,
+      "adaptive_efficiency": 0.010416666666666666,
+      "efficiency_ratio": 2.6041666666666665,
+      "total_cost_fixed": 1000,
+      "total_cost_adaptive": 384,
+      "cost_difference": -616
+    },
+    "cost_benefit_analysis": {
+      "additional_successes": 0,
+      "additional_cost": -616,
+      "cost_per_additional_success": Infinity,
+      "break_even_point": null
+    }
+  },
+  "computational_efficiency_metrics": {
+    "overall_efficiency": {
+      "mean_allocation_efficiency": 0.08981740738072179,
+      "median_allocation_efficiency": 0.08888678220800598,
+      "mean_resource_utilization": 0.8374294042899054,
+      "combined_efficiency_score": 0.0752157379577016
+    },
+    "efficiency_distribution": {
+      "very_low": 0,
+      "low": 0,
+      "medium": 4,
+      "high": 1
+    },
+    "top_performers": {
+      "count": 1,
+      "mean_efficiency": 0.11105590905638978,
+      "mean_allocation": 42.0,
+      "success_rate": 1.0
+    },
+    "efficiency_trends": {}
+  },
+  "optimization_recommendations": [
+    "Adaptive extensions are effective (+50.0% success rate). Consider more aggressive extension policies for difficult problems.",
+    "Adaptive allocation is highly efficient (ratio: 2.60). Consider expanding adaptive strategies to more problem types."
+  ]
+}

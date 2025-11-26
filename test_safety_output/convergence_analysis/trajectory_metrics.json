@@ -1,0 +1,188 @@
+[
+  {
+    "trajectory_id": "traj_0000",
+    "problem_type": "novel_backbone",
+    "difficulty": "easy",
+    "total_steps": 65,
+    "converged": true,
+    "convergence_step": 55,
+    "final_energy": -6.997446663661277,
+    "initial_energy": -1.3154616225436329,
+    "energy_improvement": 5.6819850411176445,
+    "energy_variance": 0.0031422007354820376,
+    "step_efficiency": 0.08741515447873299,
+    "landscape_progression": {
+      "landscapes_traversed": 5,
+      "steps_per_landscape": [
+        15,
+        15,
+        15,
+        15,
+        5
+      ],
+      "energy_improvement_per_landscape": [
+        2.213707491666816,
+        1.5945133888586072,
+        1.300245550358519,
+        0.10951980047902232,
+        0.05418280886167892
+      ],
+      "landscape_transition_quality": 1.0
+    },
+    "gradient_metrics": {
+      "energy_monotonicity": 0.8125,
+      "improvement_consistency": 0.2984851470190657,
+      "gradient_coherence": 0.8266666666666664,
+      "oscillation_measure": 0.13846153846153847
+    },
+    "failure_mode": null
+  },
+  {
+    "trajectory_id": "traj_0001",
+    "problem_type": "multi_constraint",
+    "difficulty": "medium",
+    "total_steps": 61,
+    "converged": true,
+    "convergence_step": 56,
+    "final_energy": -8.18820854655591,
+    "initial_energy": -2.98320115026587,
+    "energy_improvement": 5.205007396290039,
+    "energy_variance": 0.0019535715980842634,
+    "step_efficiency": 0.0853279901031154,
+    "landscape_progression": {
+      "landscapes_traversed": 5,
+      "steps_per_landscape": [
+        15,
+        15,
+        15,
+        15,
+        1
+      ],
+      "energy_improvement_per_landscape": [
+        2.776806409312588,
+        1.230362077422881,
+        0.7985165317040606,
+        0.15854344760705708,
+        0.0
+      ],
+      "landscape_transition_quality": 0.8
+    },
+    "gradient_metrics": {
+      "energy_monotonicity": 0.8166666666666667,
+      "improvement_consistency": 0.26394270116149543,
+      "gradient_coherence": 0.8428571428571427,
+      "oscillation_measure": 0.13114754098360656
+    },
+    "failure_mode": null
+  },
+  {
+    "trajectory_id": "traj_0002",
+    "problem_type": "extrapolation",
+    "difficulty": "hard",
+    "total_steps": 110,
+    "converged": true,
+    "convergence_step": 98,
+    "final_energy": -10.865055615600957,
+    "initial_energy": -2.297155549162442,
+    "energy_improvement": 8.567900066438515,
+    "energy_variance": 0.004301553646021351,
+    "step_efficiency": 0.0778900006039865,
+    "landscape_progression": {
+      "landscapes_traversed": 5,
+      "steps_per_landscape": [
+        15,
+        15,
+        15,
+        15,
+        50
+      ],
+      "energy_improvement_per_landscape": [
+        2.0863724655678473,
+        1.361966517301016,
+        1.4918099981652304,
+        1.2183254854592906,
+        1.9187441884715
+      ],
+      "landscape_transition_quality": 1.0
+    },
+    "gradient_metrics": {
+      "energy_monotonicity": 0.8807339449541285,
+      "improvement_consistency": 0.2803515951676203,
+      "gradient_coherence": 0.8895238095238095,
+      "oscillation_measure": 0.1
+    },
+    "failure_mode": null
+  },
+  {
+    "trajectory_id": "traj_0003",
+    "problem_type": "novel_backbone",
+    "difficulty": "easy",
+    "total_steps": 42,
+    "converged": false,
+    "convergence_step": null,
+    "final_energy": -7.076204253316671,
+    "initial_energy": -2.611285901814005,
+    "energy_improvement": 4.464918351502666,
+    "energy_variance": 0.0025464506325225057,
+    "step_efficiency": 0.10630757979768253,
+    "landscape_progression": {
+      "landscapes_traversed": 3,
+      "steps_per_landscape": [
+        15,
+        15,
+        12
+      ],
+      "energy_improvement_per_landscape": [
+        2.774533230412661,
+        1.3125117493122298,
+        0.18785563468478106
+      ],
+      "landscape_transition_quality": 1.0
+    },
+    "gradient_metrics": {
+      "energy_monotonicity": 0.9024390243902439,
+      "improvement_consistency": 0.3165440599303516,
+      "gradient_coherence": 0.9027027027027027,
+      "oscillation_measure": 0.09523809523809523
+    },
+    "failure_mode": null
+  },
+  {
+    "trajectory_id": "traj_0004",
+    "problem_type": "multi_constraint",
+    "difficulty": "medium",
+    "total_steps": 106,
+    "converged": true,
+    "convergence_step": 87,
+    "final_energy": -10.634210977900853,
+    "initial_energy": -2.4071671316269234,
+    "energy_improvement": 8.22704384627393,
+    "energy_variance": 0.008105898408409787,
+    "step_efficiency": 0.07761362119126348,
+    "landscape_progression": {
+      "landscapes_traversed": 5,
+      "steps_per_landscape": [
+        15,
+        15,
+        15,
+        15,
+        46
+      ],
+      "energy_improvement_per_landscape": [
+        1.649814383951258,
+        1.4149011831664842,
+        1.5362332594085935,
+        1.197250740645221,
+        1.8959117234042822
+      ],
+      "landscape_transition_quality": 1.0
+    },
+    "gradient_metrics": {
+      "energy_monotonicity": 0.8380952380952381,
+      "improvement_consistency": 0.3667854794965313,
+      "gradient_coherence": 0.8514851485148514,
+      "oscillation_measure": 0.1320754716981132
+    },
+    "failure_mode": null
+  }
+]
