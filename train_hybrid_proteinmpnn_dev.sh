@@ -306,8 +306,7 @@ timeout 1200 python hybrid/training/train_energy.py \
     --config "$TRAINING_CONFIG" \
     --model_dir "$CHECKPOINT_DIR" \
     --log_dir "$LOG_DIR" \
-    --device cuda \
-    --debug || {
+    --device cuda || {
     
     TRAIN_EXIT=$?
     end_time=$(date +%s)

@@ -350,8 +350,7 @@ if [ -f "hybrid/evaluation/run_comprehensive_evaluation.py" ]; then
         --config "$DEV_EVAL_CONFIG" \
         --output-dir "$EVAL_RESULTS_DIR" \
         --verbose \
-        --report-format json \
-        --debug || {
+        --report-format json {
         
         EVAL_EXIT=$?
         if [ $EVAL_EXIT -eq 124 ]; then
