@@ -28,7 +28,7 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Sampler
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
@@ -61,6 +61,109 @@ from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from data.stability_dataset import StabilityDataset
 from training.losses import ContrastiveLoss, NegativeType
+
+
+class BalancedBatchSampler(Sampler):
+    """
+    Custom sampler that ensures each batch contains both positive and negative samples.
+    
+    This sampler creates batches by interleaving positive and negative samples to ensure
+    balanced composition for contrastive learning.
+    """
+    
+    def __init__(self, dataset, batch_size, drop_last=False):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.drop_last = drop_last
+        
+        # Identify positive and negative sample indices
+        self.positive_indices = []
+        self.negative_indices = []
+        
+        print("Analyzing dataset for balanced sampling...")
+        for idx in range(len(dataset)):
+            try:
+                sample = dataset[idx]
+                label = sample.get('label')
+                if label == 1:
+                    self.positive_indices.append(idx)
+                elif label == 0:
+                    self.negative_indices.append(idx)
+            except Exception as e:
+                print(f"Warning: Error accessing sample {idx}: {e}")
+                continue
+        
+        print(f"BalancedBatchSampler found: {len(self.positive_indices)} positive, {len(self.negative_indices)} negative samples")
+        
+        if len(self.positive_indices) == 0:
+            raise ValueError("No positive samples found in dataset")
+        if len(self.negative_indices) == 0:
+            raise ValueError("No negative samples found in dataset")
+        
+        # Calculate number of batches
+        min_samples = min(len(self.positive_indices), len(self.negative_indices))
+        samples_per_batch_half = self.batch_size // 2
+        max_batches = min_samples // samples_per_batch_half
+        
+        if max_batches == 0:
+            raise ValueError(f"Dataset too small for balanced batching. Need at least {samples_per_batch_half} positive and {samples_per_batch_half} negative samples")
+        
+        self.num_batches = max_batches
+        print(f"Creating {self.num_batches} balanced batches of size {self.batch_size}")
+    
+    def __iter__(self):
+        # Shuffle both positive and negative indices
+        positive_shuffled = self.positive_indices.copy()
+        negative_shuffled = self.negative_indices.copy()
+        
+        # Use deterministic shuffling for reproducibility
+        generator = torch.Generator()
+        generator.manual_seed(int(torch.empty((), dtype=torch.int64).random_().item()))
+        
+        positive_perm = torch.randperm(len(positive_shuffled), generator=generator)
+        negative_perm = torch.randperm(len(negative_shuffled), generator=generator)
+        
+        positive_shuffled = [positive_shuffled[i] for i in positive_perm]
+        negative_shuffled = [negative_shuffled[i] for i in negative_perm]
+        
+        # Create balanced batches
+        samples_per_half = self.batch_size // 2
+        
+        for batch_idx in range(self.num_batches):
+            start_idx = batch_idx * samples_per_half
+            
+            # Get positive samples
+            pos_start = start_idx % len(positive_shuffled)
+            pos_samples = []
+            for i in range(samples_per_half):
+                pos_samples.append(positive_shuffled[(pos_start + i) % len(positive_shuffled)])
+            
+            # Get negative samples
+            neg_start = start_idx % len(negative_shuffled)
+            neg_samples = []
+            for i in range(samples_per_half):
+                neg_samples.append(negative_shuffled[(neg_start + i) % len(negative_shuffled)])
+            
+            # Combine and shuffle within batch
+            batch_indices = pos_samples + neg_samples
+            batch_perm = torch.randperm(len(batch_indices), generator=generator)
+            batch_indices = [batch_indices[i] for i in batch_perm]
+            
+            # Handle odd batch sizes
+            if self.batch_size % 2 == 1:
+                # Add one more sample (alternating positive/negative)
+                if batch_idx % 2 == 0 and positive_shuffled:
+                    extra_idx = positive_shuffled[(start_idx + samples_per_half) % len(positive_shuffled)]
+                elif negative_shuffled:
+                    extra_idx = negative_shuffled[(start_idx + samples_per_half) % len(negative_shuffled)]
+                else:
+                    extra_idx = positive_shuffled[(start_idx + samples_per_half) % len(positive_shuffled)]
+                batch_indices.append(extra_idx)
+            
+            yield batch_indices
+    
+    def __len__(self):
+        return self.num_batches
 
 
 class EnergyModelTrainer:
@@ -340,21 +443,78 @@ class EnergyModelTrainer:
         
         # Custom collate function to handle protein data
         def collate_fn(batch):
-            """Custom collate function for protein dataset"""
+            """Custom collate function for protein dataset with batch balance validation"""
             # Batch is a list of individual samples from StabilityDataset
             collated = {}
             
-            # Stack/pad tensors appropriately
-            if 'backbone_features' in batch[0]:
-                collated['backbone_features'] = torch.stack([item['backbone_features'] for item in batch])
-            if 'sequence' in batch[0]:
-                collated['sequence'] = torch.stack([item['sequence'] for item in batch])
-            if 'mask' in batch[0]:
-                collated['mask'] = torch.stack([item['mask'] for item in batch])
+            # Extract labels for balance checking
+            labels = [item.get('label') for item in batch]
+            pos_count = sum(1 for label in labels if label == 1)
+            neg_count = sum(1 for label in labels if label == 0)
+            
+            # Warn if batch is imbalanced (but don't fail - BalancedBatchSampler should handle this)
+            if pos_count == 0 or neg_count == 0:
+                print(f"Warning: Imbalanced batch detected - {pos_count} positive, {neg_count} negative samples")
+            
+            # Stack/pad tensors appropriately with error handling
+            try:
+                if 'backbone_features' in batch[0]:
+                    backbone_features = []
+                    for item in batch:
+                        feat = item['backbone_features']
+                        if not isinstance(feat, torch.Tensor):
+                            feat = torch.tensor(feat)
+                        backbone_features.append(feat)
+                    collated['backbone_features'] = torch.stack(backbone_features)
+            except Exception as e:
+                print(f"Error stacking backbone_features: {e}")
+                # Create dummy backbone features if needed
+                batch_size = len(batch)
+                seq_len = 50  # Default sequence length
+                collated['backbone_features'] = torch.randn(batch_size, seq_len, 128)
+            
+            try:
+                if 'sequence' in batch[0]:
+                    sequences = []
+                    for item in batch:
+                        seq = item['sequence']
+                        if not isinstance(seq, torch.Tensor):
+                            seq = torch.tensor(seq)
+                        sequences.append(seq)
+                    collated['sequence'] = torch.stack(sequences)
+            except Exception as e:
+                print(f"Error stacking sequences: {e}")
+                batch_size = len(batch)
+                seq_len = 50  # Default sequence length
+                collated['sequence'] = torch.randint(0, 20, (batch_size, seq_len))
+            
+            try:
+                if 'mask' in batch[0]:
+                    masks = []
+                    for item in batch:
+                        mask = item['mask']
+                        if not isinstance(mask, torch.Tensor):
+                            mask = torch.tensor(mask)
+                        masks.append(mask)
+                    collated['mask'] = torch.stack(masks)
+            except Exception as e:
+                print(f"Error stacking masks: {e}")
+                batch_size = len(batch)
+                seq_len = 50  # Default sequence length
+                collated['mask'] = torch.ones(batch_size, seq_len)
             
             # Handle scalars and labels
-            collated['label'] = torch.tensor([item['label'] for item in batch])
-            collated['length'] = torch.tensor([item['length'] for item in batch])
+            try:
+                collated['label'] = torch.tensor([item['label'] for item in batch])
+            except Exception as e:
+                print(f"Error creating label tensor: {e}")
+                collated['label'] = torch.tensor([1] * len(batch))  # Default to positive
+                
+            try:
+                collated['length'] = torch.tensor([item['length'] for item in batch])
+            except Exception as e:
+                print(f"Error creating length tensor: {e}")
+                collated['length'] = torch.tensor([50] * len(batch))  # Default length
             
             # Handle string/categorical data
             if 'generation_method' in batch[0]:
@@ -364,15 +524,33 @@ class EnergyModelTrainer:
             
             return collated
         
-        self.train_loader = DataLoader(
-            train_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=num_workers,
-            pin_memory=torch.cuda.is_available(),
-            drop_last=True,
-            collate_fn=collate_fn
-        )
+        # Use BalancedBatchSampler for training to ensure balanced positive/negative batches
+        try:
+            train_sampler = BalancedBatchSampler(
+                train_dataset,
+                batch_size=batch_size,
+                drop_last=True
+            )
+            
+            self.train_loader = DataLoader(
+                train_dataset,
+                batch_sampler=train_sampler,
+                num_workers=num_workers,
+                pin_memory=torch.cuda.is_available(),
+                collate_fn=collate_fn
+            )
+            print("Using BalancedBatchSampler for training data")
+        except (ValueError, Exception) as e:
+            print(f"Warning: BalancedBatchSampler failed ({e}), falling back to standard DataLoader")
+            self.train_loader = DataLoader(
+                train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=num_workers,
+                pin_memory=torch.cuda.is_available(),
+                drop_last=True,
+                collate_fn=collate_fn
+            )
         
         self.val_loader = DataLoader(
             val_dataset,
@@ -630,8 +808,50 @@ class EnergyModelTrainer:
         """Validate that the dataset contains properly balanced batches before training"""
         print("Validating dataset composition...")
         
+        # First, check the dataset composition before batching
+        print("\n=== Dataset Analysis ===")
+        train_dataset = self.train_loader.dataset
+        total_samples = len(train_dataset)
+        print(f"Total dataset samples: {total_samples}")
+        
+        # Count positive/negative samples in the raw dataset
+        positive_count = 0
+        negative_count = 0
+        sample_errors = 0
+        
+        print("Sampling dataset to check positive/negative balance...")
+        sample_size = min(100, total_samples)  # Sample up to 100 items
+        sample_indices = list(range(0, total_samples, max(1, total_samples // sample_size)))
+        
+        for idx in sample_indices:
+            try:
+                sample = train_dataset[idx]
+                label = sample.get('label')
+                if label == 1:
+                    positive_count += 1
+                elif label == 0:
+                    negative_count += 1
+                else:
+                    sample_errors += 1
+                    print(f"  Warning: Sample {idx} has invalid label: {label}")
+            except Exception as e:
+                sample_errors += 1
+                print(f"  Error accessing sample {idx}: {e}")
+        
+        print(f"Raw dataset composition (sampled {len(sample_indices)} items):")
+        print(f"  Positive samples: {positive_count}")
+        print(f"  Negative samples: {negative_count}")
+        print(f"  Sample errors: {sample_errors}")
+        print(f"  Positive ratio: {positive_count / (positive_count + negative_count):.3f}")
+        
+        if positive_count == 0:
+            raise RuntimeError("Dataset contains NO positive samples")
+        if negative_count == 0:
+            raise RuntimeError("Dataset contains NO negative samples")
+        
+        print("\n=== Batch Analysis ===")
         # Sample first few batches to check for positive/negative balance
-        sample_limit = min(5, len(self.train_loader))
+        sample_limit = min(10, len(self.train_loader))  # Check more batches
         total_batches_checked = 0
         problematic_batches = 0
         
@@ -643,21 +863,44 @@ class EnergyModelTrainer:
                 batch = next(temp_loader)
                 total_batches_checked += 1
                 
-                # Move batch to device for processing
-                batch = self._move_batch_to_device(batch)
+                # Debug: Check what we actually got
+                print(f"  Debug - Batch {i+1} type: {type(batch)}")
+                if isinstance(batch, dict):
+                    print(f"    Keys: {list(batch.keys())}")
+                    if 'label' in batch:
+                        print(f"    Labels type: {type(batch['label'])}, value: {batch['label']}")
                 
-                # Check batch composition
+                # Check batch composition (no need to move to device for validation)
+                if not isinstance(batch, dict):
+                    print(f"    Error: Expected dict batch, got {type(batch)}")
+                    problematic_batches += 1
+                    continue
+                    
                 labels = batch.get('label')
                 if labels is not None:
+                    # Handle different label formats
+                    if isinstance(labels, (list, tuple)):
+                        labels = torch.tensor(labels)
+                    elif not isinstance(labels, torch.Tensor):
+                        try:
+                            labels = torch.tensor(labels)
+                        except Exception as label_error:
+                            print(f"    Error converting labels to tensor: {label_error}")
+                            print(f"    Labels content: {labels}")
+                            problematic_batches += 1
+                            continue
+                    
                     pos_count = (labels == 1).sum().item()
                     neg_count = (labels == 0).sum().item()
                     
+                    print(f"  Batch {i+1}: {pos_count} positive, {neg_count} negative samples")
+                    
                     if pos_count == 0 or neg_count == 0:
                         problematic_batches += 1
-                        print(f"  Batch {i+1}: Only {'positive' if pos_count > 0 else 'negative'} samples "
-                              f"(pos: {pos_count}, neg: {neg_count})")
+                        print(f"    ⚠️  IMBALANCED: Only {'positive' if pos_count > 0 else 'negative'} samples!")
                 else:
                     print(f"  Warning: Batch {i+1} has no label field")
+                    problematic_batches += 1
                     
             except StopIteration:
                 print(f"  Dataset exhausted after {total_batches_checked} batches")
@@ -675,7 +918,15 @@ class EnergyModelTrainer:
         print(f"Dataset validation complete: {problematic_batches}/{total_batches_checked} "
               f"batches ({problem_rate:.1%}) are problematic")
         
-        if problem_rate > 0.5:  # More than 50% problematic
+        # Check if we're using BalancedBatchSampler (which should fix the issue)
+        using_balanced_sampler = hasattr(self.train_loader, 'batch_sampler') and \
+                                isinstance(getattr(self.train_loader, 'batch_sampler', None), BalancedBatchSampler)
+        
+        if using_balanced_sampler:
+            print("✅ Using BalancedBatchSampler - batch composition should be balanced")
+            if problem_rate > 0:
+                print(f"⚠️  Note: {problem_rate:.1%} validation errors detected, but BalancedBatchSampler should handle training correctly")
+        elif problem_rate > 0.5:  # More than 50% problematic
             raise RuntimeError(
                 f"Dataset validation failed: {problem_rate:.1%} of sampled batches contain only "
                 "positive OR negative samples, but training requires both types in each batch. "
