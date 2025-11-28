@@ -71,10 +71,12 @@ class BalancedBatchSampler(Sampler):
     balanced composition for contrastive learning.
     """
     
-    def __init__(self, dataset, batch_size, drop_last=False):
+    def __init__(self, dataset, batch_size, drop_last=False, seed=42):
         self.dataset = dataset
         self.batch_size = batch_size
         self.drop_last = drop_last
+        self.seed = seed
+        self.epoch = 0
         
         # Identify positive and negative sample indices
         self.positive_indices = []
@@ -116,9 +118,10 @@ class BalancedBatchSampler(Sampler):
         positive_shuffled = self.positive_indices.copy()
         negative_shuffled = self.negative_indices.copy()
         
-        # Use deterministic shuffling for reproducibility
+        # Use deterministic shuffling for reproducibility (epoch-based seeding)
         generator = torch.Generator()
-        generator.manual_seed(int(torch.empty((), dtype=torch.int64).random_().item()))
+        generator.manual_seed(self.seed + self.epoch)
+        self.epoch += 1
         
         positive_perm = torch.randperm(len(positive_shuffled), generator=generator)
         negative_perm = torch.randperm(len(negative_shuffled), generator=generator)
@@ -456,101 +459,61 @@ class EnergyModelTrainer:
             if pos_count == 0 or neg_count == 0:
                 print(f"Warning: Imbalanced batch detected - {pos_count} positive, {neg_count} negative samples")
             
-            # Stack/pad tensors appropriately with error handling
-            try:
-                if 'backbone_features' in batch[0]:
-                    backbone_features = []
-                    for item in batch:
-                        feat = item['backbone_features']
-                        if not isinstance(feat, torch.Tensor):
-                            feat = torch.tensor(feat)
-                        backbone_features.append(feat)
-                    collated['backbone_features'] = torch.stack(backbone_features)
-            except Exception as e:
-                print(f"Error stacking backbone_features: {e}")
-                # Create dummy backbone features if needed
-                batch_size = len(batch)
-                seq_len = 50  # Default sequence length
-                collated['backbone_features'] = torch.randn(batch_size, seq_len, 128)
+            # Stack/pad tensors appropriately with strict error handling
+            if 'backbone_features' in batch[0]:
+                backbone_features = []
+                for item in batch:
+                    feat = item['backbone_features']
+                    if not isinstance(feat, torch.Tensor):
+                        feat = torch.tensor(feat)
+                    backbone_features.append(feat)
+                collated['backbone_features'] = torch.stack(backbone_features)
             
-            try:
-                if 'sequence' in batch[0]:
-                    sequences = []
-                    for item in batch:
-                        seq = item['sequence']
-                        if not isinstance(seq, torch.Tensor):
-                            seq = torch.tensor(seq)
-                        sequences.append(seq)
-                    collated['sequence'] = torch.stack(sequences)
-            except Exception as e:
-                print(f"Error stacking sequences: {e}")
-                batch_size = len(batch)
-                seq_len = 50  # Default sequence length
-                collated['sequence'] = torch.randint(0, 20, (batch_size, seq_len))
+            if 'sequence' in batch[0]:
+                sequences = []
+                for item in batch:
+                    seq = item['sequence']
+                    if not isinstance(seq, torch.Tensor):
+                        seq = torch.tensor(seq)
+                    sequences.append(seq)
+                collated['sequence'] = torch.stack(sequences)
             
-            try:
-                if 'mask' in batch[0]:
-                    masks = []
-                    for item in batch:
-                        mask = item['mask']
-                        if not isinstance(mask, torch.Tensor):
-                            mask = torch.tensor(mask)
-                        masks.append(mask)
-                    collated['mask'] = torch.stack(masks)
-            except Exception as e:
-                print(f"Error stacking masks: {e}")
-                batch_size = len(batch)
-                seq_len = 50  # Default sequence length
-                collated['mask'] = torch.ones(batch_size, seq_len)
+            if 'mask' in batch[0]:
+                masks = []
+                for item in batch:
+                    mask = item['mask']
+                    if not isinstance(mask, torch.Tensor):
+                        mask = torch.tensor(mask)
+                    masks.append(mask)
+                collated['mask'] = torch.stack(masks)
             
-            # Handle scalars and labels
-            try:
-                collated['label'] = torch.tensor([item['label'] for item in batch])
-            except Exception as e:
-                print(f"Error creating label tensor: {e}")
-                collated['label'] = torch.tensor([1] * len(batch))  # Default to positive
-                
-            try:
-                collated['length'] = torch.tensor([item['length'] for item in batch])
-            except Exception as e:
-                print(f"Error creating length tensor: {e}")
-                collated['length'] = torch.tensor([50] * len(batch))  # Default length
+            # Handle scalars and labels - fail-fast on errors
+            collated['label'] = torch.tensor([item['label'] for item in batch])
+            collated['length'] = torch.tensor([item['length'] for item in batch])
             
-            # Handle string/categorical data
-            if 'generation_method' in batch[0]:
-                collated['generation_method'] = [item['generation_method'] for item in batch]
+            # Handle string/categorical data - use .get() for optional fields
+            collated['generation_method'] = [item.get('generation_method', None) for item in batch]
             if 'structure_id' in batch[0]:
                 collated['structure_id'] = [item['structure_id'] for item in batch]
             
             return collated
         
         # Use BalancedBatchSampler for training to ensure balanced positive/negative batches
-        try:
-            train_sampler = BalancedBatchSampler(
-                train_dataset,
-                batch_size=batch_size,
-                drop_last=True
-            )
-            
-            self.train_loader = DataLoader(
-                train_dataset,
-                batch_sampler=train_sampler,
-                num_workers=num_workers,
-                pin_memory=torch.cuda.is_available(),
-                collate_fn=collate_fn
-            )
-            print("Using BalancedBatchSampler for training data")
-        except (ValueError, Exception) as e:
-            print(f"Warning: BalancedBatchSampler failed ({e}), falling back to standard DataLoader")
-            self.train_loader = DataLoader(
-                train_dataset,
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=num_workers,
-                pin_memory=torch.cuda.is_available(),
-                drop_last=True,
-                collate_fn=collate_fn
-            )
+        train_sampler = BalancedBatchSampler(
+            train_dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            seed=self.config.get('seed', 42)
+        )
+        
+        self.train_loader = DataLoader(
+            train_dataset,
+            batch_sampler=train_sampler,
+            num_workers=num_workers,
+            pin_memory=torch.cuda.is_available(),
+            collate_fn=collate_fn
+        )
+        print("Using BalancedBatchSampler for training data")
         
         self.val_loader = DataLoader(
             val_dataset,
@@ -1044,8 +1007,12 @@ class EnergyModelTrainer:
                 mask=batch.get('mask')[neg_mask] if batch.get('mask') is not None else None
             )
             
-            # Extract negative types for negative samples
-            negative_types = [batch['generation_method'][i] for i in range(len(labels)) if neg_mask[i]]
+            # Extract negative types for negative samples (filter None values)
+            negative_types = [
+                batch['generation_method'][i] 
+                for i in range(len(labels)) 
+                if neg_mask[i] and batch['generation_method'][i] is not None
+            ]
         else:
             neg_energies = torch.tensor([], device=self.device)
             negative_types = []

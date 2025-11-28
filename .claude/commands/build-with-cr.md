@@ -1,7 +1,7 @@
 ---
 description: Build with review, then run multi-agent debate review, and apply fixes via subagent
 argument-hint: <user request>
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git *), TodoManager, Bash(cat*)
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash(git *), TodoManager, Bash(cat*), Touch, Cat, Echo, Bash
 model: claude-sonnet-4-5
 ---
 
