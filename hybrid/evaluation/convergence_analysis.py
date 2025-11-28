@@ -44,6 +44,7 @@ Features:
 import os
 import sys
 import json
+import random
 import warnings
 import numpy as np
 from pathlib import Path
@@ -1180,7 +1181,12 @@ class ConvergenceAnalyzer:
             ax.set_title('Distribution of Failure Modes')
     
     def _plot_individual_trajectories(self, output_path: Path):
-        """Plot individual optimization trajectories"""
+        """
+        Plot individual optimization trajectories.
+        
+        Creates trajectory summaries and energy progression plots for selected trajectories.
+        If step-by-step energy data is not available, plots energy improvements and metrics.
+        """
         
         # Select subset of trajectories for plotting
         plot_count = min(self.config.max_trajectories_plot, len(self.trajectory_metrics))
@@ -1194,12 +1200,184 @@ class ConvergenceAnalyzer:
         trajectories_dir = output_path / "individual_trajectories"
         trajectories_dir.mkdir(exist_ok=True)
         
-        # TODO: This would require access to the original trajectory energy data
-        # For now, create a placeholder implementation
+        # Select diverse set of trajectories for plotting
+        selected_trajectories = self._select_representative_trajectories(plot_count)
         
-        # Sample implementation - would need actual trajectory data
-        print("Individual trajectory plotting requires access to energy progression data.")
-        print("This feature will be fully implemented when integrated with real optimization trajectories.")
+        # Create individual plots for each selected trajectory
+        for i, metrics in enumerate(selected_trajectories):
+            try:
+                self._plot_single_trajectory(metrics, trajectories_dir, i)
+            except Exception as e:
+                print(f"Failed to plot trajectory {metrics.trajectory_id}: {e}")
+                continue
+        
+        print(f"Individual trajectory plots saved to {trajectories_dir}")
+    
+    def _select_representative_trajectories(self, count: int) -> List[ConvergenceMetrics]:
+        """Select representative trajectories for plotting"""
+        if len(self.trajectory_metrics) <= count:
+            return self.trajectory_metrics
+        
+        # Categorize trajectories
+        converged = [m for m in self.trajectory_metrics if m.converged]
+        failed = [m for m in self.trajectory_metrics if not m.converged]
+        
+        # Select mix of converged and failed trajectories
+        selected = []
+        
+        # Include some converged trajectories (best and worst performers)
+        if converged:
+            converged_sorted = sorted(converged, key=lambda x: x.step_efficiency, reverse=True)
+            selected.extend(converged_sorted[:min(count//2, len(converged))])
+        
+        # Include some failed trajectories
+        if failed and len(selected) < count:
+            remaining = count - len(selected)
+            selected.extend(failed[:remaining])
+        
+        # Fill remaining slots with random selection
+        if len(selected) < count:
+            remaining_metrics = [m for m in self.trajectory_metrics if m not in selected]
+            random.shuffle(remaining_metrics)
+            selected.extend(remaining_metrics[:count - len(selected)])
+        
+        return selected[:count]
+    
+    def _plot_single_trajectory(self, metrics: ConvergenceMetrics, output_dir: Path, index: int):
+        """Plot analysis for a single trajectory"""
+        
+        # Create figure with subplots for different aspects
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
+        fig.suptitle(f'Trajectory {metrics.trajectory_id} - {metrics.problem_type}', fontsize=14)
+        
+        # Plot 1: Energy progression summary
+        self._plot_energy_summary(ax1, metrics)
+        
+        # Plot 2: Convergence metrics
+        self._plot_convergence_metrics(ax2, metrics) 
+        
+        # Plot 3: Landscape progression
+        self._plot_landscape_progression(ax3, metrics)
+        
+        # Plot 4: Quality metrics
+        self._plot_quality_metrics(ax4, metrics)
+        
+        plt.tight_layout()
+        
+        # Save plot
+        filename = f"trajectory_{index:03d}_{metrics.trajectory_id.replace('/', '_')}.png"
+        plt.savefig(output_dir / filename, dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _plot_energy_summary(self, ax, metrics: ConvergenceMetrics):
+        """Plot energy improvement summary for a trajectory"""
+        
+        # Create bar plot showing initial, final, and improvement
+        categories = ['Initial', 'Final', 'Improvement']
+        values = [metrics.initial_energy, metrics.final_energy, metrics.energy_improvement]
+        colors = ['lightblue', 'lightgreen', 'orange']
+        
+        bars = ax.bar(categories, values, color=colors, alpha=0.7)
+        
+        # Add value labels
+        for bar, value in zip(bars, values):
+            # Calculate text offset based on value range
+            value_range = max(values) - min(values) if values else 1.0
+            offset = max(0.01, value_range * 0.02)  # At least 0.01, or 2% of range
+            ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + offset,
+                   f'{value:.3f}', ha='center', va='bottom', fontsize=10)
+        
+        ax.set_ylabel('Energy')
+        ax.set_title('Energy Summary')
+        
+        # Add convergence status
+        status = "Converged" if metrics.converged else f"Failed ({metrics.failure_mode})"
+        ax.text(0.5, 0.95, status, transform=ax.transAxes, ha='center', va='top',
+               bbox=dict(boxstyle="round,pad=0.3", 
+                        facecolor='lightgreen' if metrics.converged else 'lightcoral'))
+    
+    def _plot_convergence_metrics(self, ax, metrics: ConvergenceMetrics):
+        """Plot convergence-related metrics for a trajectory"""
+        
+        metric_names = ['Step Efficiency', 'Energy Variance', 'Convergence Step']
+        metric_values = [
+            metrics.step_efficiency,
+            metrics.energy_variance,
+            (metrics.convergence_step / metrics.total_steps) if (metrics.convergence_step and metrics.total_steps > 0) else 0
+        ]
+        
+        # Normalize values for visualization (0-1 scale)
+        normalized_values = []
+        for i, (name, value) in enumerate(zip(metric_names, metric_values)):
+            if i == 2:  # Convergence step ratio is already 0-1
+                normalized_values.append(value)
+            else:
+                # Use simple scaling for other metrics
+                normalized_values.append(min(abs(value), 1.0))
+        
+        bars = ax.barh(metric_names, normalized_values, alpha=0.7,
+                      color=['skyblue', 'lightgreen', 'orange'])
+        
+        # Add value labels
+        for bar, orig_value in zip(bars, metric_values):
+            ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2.,
+                   f'{orig_value:.3f}', ha='left', va='center', fontsize=9)
+        
+        ax.set_xlabel('Normalized Value')
+        ax.set_title('Convergence Metrics')
+        ax.set_xlim(0, 1.2)
+    
+    def _plot_landscape_progression(self, ax, metrics: ConvergenceMetrics):
+        """Plot landscape progression analysis for a trajectory"""
+        
+        if not metrics.landscape_progression:
+            ax.text(0.5, 0.5, 'No landscape data available', 
+                   ha='center', va='center', transform=ax.transAxes)
+            ax.set_title('Landscape Progression')
+            return
+        
+        # Extract landscape usage data if available
+        landscapes_used = metrics.landscape_progression.get('landscapes_used', [])
+        steps_per_landscape = metrics.landscape_progression.get('steps_per_landscape', [])
+        
+        if landscapes_used and steps_per_landscape:
+            # Plot steps spent in each landscape
+            ax.pie(steps_per_landscape, labels=[f'L{i}' for i in landscapes_used],
+                  autopct='%1.1f%%', alpha=0.7)
+            ax.set_title('Time in Each Landscape')
+        else:
+            # Fallback: show total landscapes used
+            total_landscapes = metrics.landscape_progression.get('total_landscapes_used', 0)
+            ax.bar(['Landscapes Used'], [total_landscapes], alpha=0.7, color='lightblue')
+            ax.set_ylabel('Count')
+            ax.set_title('Landscape Usage Summary')
+    
+    def _plot_quality_metrics(self, ax, metrics: ConvergenceMetrics):
+        """Plot trajectory quality metrics"""
+        
+        gradient_metrics = metrics.gradient_metrics
+        
+        quality_names = ['Monotonicity', 'Coherence', 'Consistency', 'Oscillation']
+        quality_values = [
+            gradient_metrics.get('energy_monotonicity', 0.0),
+            gradient_metrics.get('gradient_coherence', 0.0),
+            gradient_metrics.get('improvement_consistency', 0.0),
+            1.0 - gradient_metrics.get('oscillation_measure', 0.0)  # Invert oscillation
+        ]
+        
+        # Create radar-style plot (simplified as bar plot)
+        bars = ax.bar(quality_names, quality_values, alpha=0.7,
+                     color=['lightblue', 'lightgreen', 'orange', 'lightcoral'])
+        
+        # Add value labels
+        for bar, value in zip(bars, quality_values):
+            ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.02,
+                   f'{value:.2f}', ha='center', va='bottom', fontsize=9)
+        
+        ax.set_ylabel('Quality Score')
+        ax.set_title('Trajectory Quality Metrics')
+        ax.set_ylim(0, 1.2)
+        ax.tick_params(axis='x', rotation=45)
     
     def _save_detailed_analysis(self, result: ConvergenceAnalysisResult, output_dir: str):
         """Save detailed analysis results"""

@@ -177,7 +177,10 @@ class LogicMachine(nn.Module):
                             dims=0 and input=None to indicate no input of that
                             group.
                 output_dims: the number of output channels of each group in each
-                            layer, could use a single value.
+                            layer. Can be:
+                            - Single value: same for all layers
+                            - List of values: one per layer  
+                            - List of lists: per layer, per group specification
         """
         super().__init__()
         self.depth = depth
@@ -199,11 +202,17 @@ class LogicMachine(nn.Module):
         self.layers = nn.ModuleList()
         current_dims = input_dims
         total_output_dims = [0 for _ in range(self.breadth + 1)]  # for IO residual only
+        
+        # Support output_dims as single value, list, or list of lists
+        output_dims_per_layer = self._prepare_output_dims(output_dims, depth)
+        
         for i in range(depth):
             if i > 0 and io_residual:
                 add_(current_dims, input_dims)
-            # TODO: support output_dims as list or list[list]
-            layer = LogicLayer(breadth, current_dims, output_dims, logic_hidden_dim, exclude_self, residual)
+            
+            # Get output_dims for this specific layer
+            layer_output_dims = output_dims_per_layer[i]
+            layer = LogicLayer(breadth, current_dims, layer_output_dims, logic_hidden_dim, exclude_self, residual)
             current_dims = layer.output_dims
             current_dims = self._mask(current_dims, i, 0)
             if io_residual:
@@ -214,6 +223,42 @@ class LogicMachine(nn.Module):
             self.output_dims = total_output_dims
         else:
             self.output_dims = current_dims
+
+    def _prepare_output_dims(self, output_dims, depth):
+        """
+        Prepare output_dims for each layer, supporting multiple input formats:
+        
+        Args:
+            output_dims: Can be:
+                - Single int/value: Use same dims for all layers
+                - List of ints: One value per layer
+                - List of lists: Per-layer, per-group specification
+            depth: Number of layers
+            
+        Returns:
+            List of output_dims, one per layer
+        """
+        # Case 1: Single value - use for all layers
+        if not isinstance(output_dims, list):
+            return [output_dims] * depth
+        
+        # Case 2: List provided
+        if len(output_dims) != depth:
+            raise ValueError(
+                f"output_dims list length ({len(output_dims)}) must match depth ({depth})"
+            )
+        
+        # Validate each element is appropriate for LogicLayer
+        for i, dims in enumerate(output_dims):
+            if isinstance(dims, list):
+                # List of lists case - each sublist should specify dims per group
+                if len(dims) != self.breadth + 1:
+                    raise ValueError(
+                        f"Layer {i} output_dims sublist length ({len(dims)}) must match breadth+1 ({self.breadth + 1})"
+                    )
+            # Single values or lists are both valid - LogicLayer will handle them
+        
+        return output_dims
 
     # mask out the specific group-entry in layer i, specified by self.connections
     def _mask(self, a, i, masked_value):

@@ -444,6 +444,33 @@ class EnergyModelTrainer:
         batch_size = self.config['training']['batch_size']
         num_workers = self.config['training'].get('num_workers', 4)
         
+        # Amino acid encoding utilities
+        # Standard amino acid alphabet (same as in StabilityDataset)
+        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        aa_to_idx = {aa: i for i, aa in enumerate(amino_acids)}
+        
+        def encode_sequence(sequence):
+            """Convert amino acid sequence string to tensor of indices"""
+            if isinstance(sequence, str):
+                if not sequence:
+                    return torch.tensor([], dtype=torch.long)
+                
+                # Convert string sequence to indices
+                indices = []
+                for aa in sequence:
+                    aa_upper = aa.upper()
+                    if aa_upper in aa_to_idx:
+                        indices.append(aa_to_idx[aa_upper])
+                    # Skip unknown amino acids (don't raise error, just filter)
+                
+                return torch.tensor(indices, dtype=torch.long)
+            elif isinstance(sequence, torch.Tensor):
+                # Already encoded, return as-is
+                return sequence
+            else:
+                # Try to convert directly
+                return torch.tensor(sequence, dtype=torch.long)
+        
         # Custom collate function to handle protein data
         def collate_fn(batch):
             """Custom collate function for protein dataset with batch balance validation"""
@@ -473,10 +500,22 @@ class EnergyModelTrainer:
                 sequences = []
                 for item in batch:
                     seq = item['sequence']
-                    if not isinstance(seq, torch.Tensor):
-                        seq = torch.tensor(seq)
+                    seq = encode_sequence(seq)
                     sequences.append(seq)
-                collated['sequence'] = torch.stack(sequences)
+                
+                # Pad sequences to same length for stacking
+                if sequences:
+                    max_len = max(seq.size(0) for seq in sequences)
+                    padded_sequences = []
+                    for seq in sequences:
+                        if seq.size(0) < max_len:
+                            # Pad with zeros (could also use a special padding token)
+                            padding = torch.zeros(max_len - seq.size(0), dtype=torch.long)
+                            seq = torch.cat([seq, padding])
+                        padded_sequences.append(seq)
+                    collated['sequence'] = torch.stack(padded_sequences)
+                else:
+                    collated['sequence'] = torch.empty((0,), dtype=torch.long)
             
             if 'mask' in batch[0]:
                 masks = []

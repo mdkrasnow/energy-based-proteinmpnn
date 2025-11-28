@@ -379,12 +379,28 @@ class StabilityDataset(Dataset):
             return None
     
     def _extract_chain_data(self, chain: Chain) -> Tuple[np.ndarray, str]:
-        """Extract coordinates and sequence from a BioPython chain"""
+        """
+        Extract coordinates and sequence from a BioPython chain.
+        
+        Only processes standard amino acid residues, filtering out:
+        - Heteroatoms (waters, ligands, ions) 
+        - Non-standard residues
+        - Residues with missing backbone atoms
+        
+        Args:
+            chain: BioPython Chain object
+            
+        Returns:
+            Tuple of (coordinates array [L, 4, 3], sequence string)
+        """
         coords = []
         sequence = []
         
         for residue in chain:
-            if residue.id[0] != ' ':  # Skip heteroatoms
+            # Skip heteroatoms and non-standard residues
+            # In BioPython PDB format, residue.id[0] is the "hetero flag":
+            # ' ' = standard amino acid, 'H' = heteroatom, 'W' = water
+            if residue.id[0] != ' ':
                 continue
             
             # Get backbone atoms (N, CA, C, O)
