@@ -140,7 +140,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Quick pip install with timeout
 echo "Installing minimal dependencies for dev testing..."
-timeout 300 pip install --user -q torch torchvision torchaudio || {
+timeout 300 pip install --user -q torch torchvision torchaudio biopython || {
     echo "ERROR: Failed to install PyTorch within 5 minutes"
     exit 1
 }
@@ -177,7 +177,7 @@ else:
 echo "✓ GPU validation passed"
 
 # ------------------------------------------------------------------------------
-# 5. Quick data directories setup with mock PDB files
+# 5. Data directories setup for real PDB files
 # ------------------------------------------------------------------------------
 
 echo "Setting up data directories..."
@@ -185,70 +185,27 @@ mkdir -p "$JOB_SCRATCH/data"
 mkdir -p "$JOB_SCRATCH/checkpoints"
 mkdir -p "$JOB_SCRATCH/logs"
 
-# Generate mock PDB files for dev testing
-echo "Generating mock PDB files for development testing..."
-
-# Function to create a minimal valid PDB file
-create_mock_pdb() {
-    local filename="$1"
-    local sequence="$2"
-    local chain_id="${3:-A}"
-    
-    cat > "$filename" << EOF
-HEADER    MOCK PROTEIN                            01-JAN-25   MOCK            
-TITLE     MOCK PROTEIN FOR DEVELOPMENT TESTING                                 
-COMPND    MOL_ID: 1;                                                          
-COMPND   2 MOLECULE: MOCK PROTEIN;                                           
-COMPND   3 CHAIN: $chain_id;                                                    
-SOURCE    MOL_ID: 1;                                                          
-SOURCE   2 SYNTHETIC: YES                                                     
-KEYWDS    MOCK, DEVELOPMENT, TESTING                                          
-EOF
-
-    # Generate ATOM records for each amino acid
-    local atom_num=1
-    local res_num=1
-    
-    for ((i=0; i<${#sequence}; i++)); do
-        local aa="${sequence:$i:1}"
-        
-        # Simple coordinates using integer arithmetic  
-        local x=$((res_num * 4))
-        local y=$((res_num % 10 * 2))
-        local z=$((res_num % 5 * 2))
-        
-        # Add backbone atoms (N, CA, C, O)
-        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           N  \n" \
-               $atom_num "N" "$aa" "$chain_id" $res_num $x.000 $y.000 $z.000 >> "$filename"
-        ((atom_num++))
-        
-        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
-               $atom_num "CA" "$aa" "$chain_id" $res_num $((x+1)).000 $y.000 $z.000 >> "$filename"
-        ((atom_num++))
-        
-        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
-               $atom_num "C" "$aa" "$chain_id" $res_num $((x+2)).000 $y.000 $z.000 >> "$filename"
-        ((atom_num++))
-        
-        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           O  \n" \
-               $atom_num "O" "$aa" "$chain_id" $res_num $((x+3)).000 $y.000 $z.000 >> "$filename"
-        ((atom_num++))
-        
-        ((res_num++))
+echo "Copying real PDB files from repository..."
+# Copy all available PDB files from the repository
+if [ -d "$REPO_DIR/proteinmpnn/inputs" ]; then
+    # Copy from all PDB input directories
+    for pdb_dir in "$REPO_DIR/proteinmpnn/inputs"/*; do
+        if [ -d "$pdb_dir/pdbs" ]; then
+            echo "Copying PDB files from $(basename "$pdb_dir")/pdbs/"
+            cp "$pdb_dir/pdbs"/*.pdb "$JOB_SCRATCH/data/" 2>/dev/null || true
+        fi
     done
     
-    echo "END" >> "$filename"
-}
-
-# Create several mock PDB files with different sequences and lengths
-create_mock_pdb "$JOB_SCRATCH/data/mock_protein_001.pdb" "MKLLILVLVLALVLLTLWFHSTDWYPFTGMHFILFKSPPESRLSARERLSRLLLSLLALRLLL"
-create_mock_pdb "$JOB_SCRATCH/data/mock_protein_002.pdb" "MGLWSKIKGLVQPTRLLLEYLEEKYEEHLYERDEGDKWRNKKFELGLEFPNLPYYIDGDVKL"  
-create_mock_pdb "$JOB_SCRATCH/data/mock_protein_003.pdb" "MKQHKAMIVALIVICITAVVAALVTRKDLCEVHIRTGQTEVAVF"
-create_mock_pdb "$JOB_SCRATCH/data/mock_protein_004.pdb" "MKKLILAILVVLVLLTLVFHSTGYPFTGVHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDW"
-create_mock_pdb "$JOB_SCRATCH/data/mock_protein_005.pdb" "MGSSHHHHHHSSGLVPRGSHMKLLILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARE"
-
-echo "Created 5 mock PDB files in $JOB_SCRATCH/data/"
-ls -la "$JOB_SCRATCH/data"/*.pdb
+    # List what we copied
+    echo "PDB files available for training:"
+    ls -1 "$JOB_SCRATCH/data"/*.pdb 2>/dev/null || {
+        echo "ERROR: No PDB files found in proteinmpnn/inputs directories"
+        exit 1
+    }
+else
+    echo "ERROR: proteinmpnn/inputs directory not found"
+    exit 1
+fi
 
 # Quick check for ProteinMPNN weights with fast fail
 PROTEINMPNN_WEIGHTS_DIR="$REPO_DIR/proteinmpnn/vanilla_model_weights"
@@ -273,10 +230,10 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. Minimal dev training configuration
+# 6. Dev training configuration
 # ------------------------------------------------------------------------------
 
-echo "Creating minimal dev training configuration..."
+echo "Creating dev training configuration..."
 TRAINING_CONFIG="$JOB_SCRATCH/dev_training_config.json"
 
 cat > "$TRAINING_CONFIG" << 'EOF'
@@ -308,7 +265,7 @@ cat > "$TRAINING_CONFIG" << 'EOF'
         "min_sequence_length": 20,
         "val_split": 0.2,
         "lazy_loading": true,
-        "max_samples": 100
+        "max_samples": null
     },
     "training": {
         "batch_size": 4,

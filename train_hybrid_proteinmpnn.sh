@@ -102,7 +102,8 @@ pip install --user -q torch torchvision torchaudio \
     tqdm einops accelerate \
     tensorboard scikit-learn \
     biopython biotite mdanalysis \
-    ipdb jupyter
+    ipdb jupyter \
+    biopython
 
 echo "Dependencies installed successfully."
 

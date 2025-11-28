@@ -163,6 +163,9 @@ class EnergyModelTrainer:
         
         start_time = time.time()
         
+        # Validate dataset composition before starting training
+        self._validate_dataset_composition()
+        
         try:
             for epoch in range(self.current_epoch, max_epochs):
                 self.current_epoch = epoch
@@ -483,9 +486,16 @@ class EnergyModelTrainer:
         loss_components = {'ranking': 0.0, 'contrastive': 0.0, 'entropy': 0.0, 'smoothness': 0.0}
         energy_stats = {'pos_mean': 0.0, 'neg_mean': 0.0, 'pos_std': 0.0, 'neg_std': 0.0}
         
+        # Early warning counters
+        total_batches = 0
+        skipped_batches = 0
+        warning_threshold = 0.8  # Warn if >80% batches are skipped
+        warning_issued = False
+        
         progress_bar = tqdm(self.train_loader, desc=f"Epoch {self.current_epoch + 1} Training")
         
         for batch_idx, batch in enumerate(progress_bar):
+            total_batches += 1
             try:
                 # Move batch to device
                 batch = self._move_batch_to_device(batch)
@@ -498,6 +508,18 @@ class EnergyModelTrainer:
                 
                 # Skip batch if empty (no positive or negative samples)
                 if outputs.get('skip_batch', False):
+                    skipped_batches += 1
+                    
+                    # Issue early warning if too many batches are being skipped
+                    if not warning_issued and total_batches >= min(10, len(self.train_loader)):  # Adapt to dataset size
+                        skip_rate = skipped_batches / total_batches
+                        if skip_rate > warning_threshold:
+                            warnings.warn(
+                                f"High batch skip rate detected: {skip_rate:.1%} of batches skipped "
+                                f"({skipped_batches}/{total_batches}). This may lead to training failure. "
+                                "Check dataset composition - each batch needs both positive and negative samples."
+                            )
+                            warning_issued = True
                     continue
                 
                 # Compute loss
@@ -551,13 +573,47 @@ class EnergyModelTrainer:
                 # Check for NaN/Inf
                 if torch.isnan(loss) or torch.isinf(loss):
                     warnings.warn(f"NaN/Inf loss detected at batch {batch_idx}")
+                    skipped_batches += 1
+                    
+                    # Check for early warning
+                    if not warning_issued and total_batches >= min(10, len(self.train_loader)):
+                        skip_rate = skipped_batches / total_batches
+                        if skip_rate > warning_threshold:
+                            warnings.warn(
+                                f"High batch skip rate detected: {skip_rate:.1%} of batches skipped "
+                                f"({skipped_batches}/{total_batches}). This may lead to training failure. "
+                                "Check for NaN/Inf losses and dataset composition issues."
+                            )
+                            warning_issued = True
                     continue
             
             except Exception as e:
                 warnings.warn(f"Error in training batch {batch_idx}: {e}")
+                skipped_batches += 1
+                
+                # Check for early warning
+                if not warning_issued and total_batches >= min(10, len(self.train_loader)):
+                    skip_rate = skipped_batches / total_batches
+                    if skip_rate > warning_threshold:
+                        warnings.warn(
+                            f"High batch skip rate detected: {skip_rate:.1%} of batches skipped "
+                            f"({skipped_batches}/{total_batches}). This may lead to training failure. "
+                            "Check for batch processing errors and dataset integrity."
+                        )
+                        warning_issued = True
                 continue
         
         # Compute epoch averages
+        if total_samples == 0:
+            raise RuntimeError(
+                "No training samples were processed in this epoch. This could be due to:\n"
+                "- All batches being skipped (lack of both positive and negative samples)\n"
+                "- All batches having NaN/Inf losses\n"
+                "- Dataset loading errors\n"
+                "- Missing dependencies (e.g., ProteinMPNN utilities)\n"
+                "Check dataset integrity and batch composition."
+            )
+        
         avg_loss = total_loss / total_samples
         for component in loss_components:
             loss_components[component] /= total_samples
@@ -569,6 +625,69 @@ class EnergyModelTrainer:
             'loss_components': loss_components,
             'energy_stats': energy_stats
         }
+    
+    def _validate_dataset_composition(self) -> None:
+        """Validate that the dataset contains properly balanced batches before training"""
+        print("Validating dataset composition...")
+        
+        # Sample first few batches to check for positive/negative balance
+        sample_limit = min(5, len(self.train_loader))
+        total_batches_checked = 0
+        problematic_batches = 0
+        
+        # Create iterator to avoid affecting the main training loop
+        temp_loader = iter(self.train_loader)
+        
+        for i in range(sample_limit):
+            try:
+                batch = next(temp_loader)
+                total_batches_checked += 1
+                
+                # Move batch to device for processing
+                batch = self._move_batch_to_device(batch)
+                
+                # Check batch composition
+                labels = batch.get('label')
+                if labels is not None:
+                    pos_count = (labels == 1).sum().item()
+                    neg_count = (labels == 0).sum().item()
+                    
+                    if pos_count == 0 or neg_count == 0:
+                        problematic_batches += 1
+                        print(f"  Batch {i+1}: Only {'positive' if pos_count > 0 else 'negative'} samples "
+                              f"(pos: {pos_count}, neg: {neg_count})")
+                else:
+                    print(f"  Warning: Batch {i+1} has no label field")
+                    
+            except StopIteration:
+                print(f"  Dataset exhausted after {total_batches_checked} batches")
+                break
+            except Exception as e:
+                print(f"  Error checking batch {i+1}: {e}")
+                total_batches_checked += 1
+                problematic_batches += 1
+        
+        # Analysis and warnings
+        if total_batches_checked == 0:
+            raise RuntimeError("Dataset appears to be empty - no batches could be loaded")
+        
+        problem_rate = problematic_batches / total_batches_checked
+        print(f"Dataset validation complete: {problematic_batches}/{total_batches_checked} "
+              f"batches ({problem_rate:.1%}) are problematic")
+        
+        if problem_rate > 0.5:  # More than 50% problematic
+            raise RuntimeError(
+                f"Dataset validation failed: {problem_rate:.1%} of sampled batches contain only "
+                "positive OR negative samples, but training requires both types in each batch. "
+                "Check dataset creation and batch composition."
+            )
+        elif problem_rate > 0:  # Some problematic batches
+            warnings.warn(
+                f"Dataset contains {problem_rate:.1%} problematic batches that will be skipped "
+                "during training. Consider rebalancing the dataset for better performance."
+            )
+        else:
+            print("✓ Dataset validation passed - batches contain proper positive/negative balance")
     
     def _validate_epoch(self) -> Dict[str, float]:
         """Validate for one epoch and return metrics"""
