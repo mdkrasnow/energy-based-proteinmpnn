@@ -122,7 +122,7 @@ if torch.cuda.is_available():
 "
 
 # ------------------------------------------------------------------------------
-# 5. Prepare data directories and download ProteinMPNN weights
+# 5. Prepare data directories, download model weights, and prepare training data
 # ------------------------------------------------------------------------------
 
 echo "Setting up data directories and downloading model weights..."
@@ -132,6 +132,101 @@ mkdir -p "$JOB_SCRATCH/data"
 mkdir -p "$JOB_SCRATCH/checkpoints"
 mkdir -p "$JOB_SCRATCH/logs"
 mkdir -p "$JOB_SCRATCH/results"
+
+# Check if training data exists, generate mock data if needed
+echo "Checking for training data..."
+if [ -z "$(find "$JOB_SCRATCH/data" -name "*.pdb" -type f 2>/dev/null | head -1)" ]; then
+    echo "No PDB files found in data directory. Generating mock training data..."
+    
+    # Function to create a minimal valid PDB file (same as dev script)
+    create_mock_pdb() {
+        local filename="$1"
+        local sequence="$2" 
+        local chain_id="${3:-A}"
+        
+        cat > "$filename" << EOF
+HEADER    MOCK PROTEIN                            01-JAN-25   MOCK            
+TITLE     MOCK PROTEIN FOR TRAINING                                           
+COMPND    MOL_ID: 1;                                                          
+COMPND   2 MOLECULE: MOCK PROTEIN;                                           
+COMPND   3 CHAIN: $chain_id;                                                    
+SOURCE    MOL_ID: 1;                                                          
+SOURCE   2 SYNTHETIC: YES                                                     
+KEYWDS    MOCK, TRAINING, PROTEINMPNN                                         
+EOF
+
+        # Generate ATOM records for each amino acid
+        local atom_num=1
+        local res_num=1
+        
+        for ((i=0; i<${#sequence}; i++)); do
+            local aa="${sequence:$i:1}"
+            
+            # Simple coordinates using integer arithmetic  
+            local x=$((res_num * 4))
+            local y=$((res_num % 10 * 2))
+            local z=$((res_num % 5 * 2))
+            
+            # Add backbone atoms (N, CA, C, O)
+            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           N  \n" \
+                   $atom_num "N" "$aa" "$chain_id" $res_num $x.000 $y.000 $z.000 >> "$filename"
+            ((atom_num++))
+            
+            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
+                   $atom_num "CA" "$aa" "$chain_id" $res_num $((x+1)).000 $y.000 $z.000 >> "$filename"
+            ((atom_num++))
+            
+            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
+                   $atom_num "C" "$aa" "$chain_id" $res_num $((x+2)).000 $y.000 $z.000 >> "$filename"
+            ((atom_num++))
+            
+            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           O  \n" \
+                   $atom_num "O" "$aa" "$chain_id" $res_num $((x+3)).000 $y.000 $z.000 >> "$filename"
+            ((atom_num++))
+            
+            ((res_num++))
+        done
+        
+        echo "END" >> "$filename"
+    }
+    
+    # Create a larger set of mock proteins for full training
+    echo "Generating mock protein structures for training..."
+    
+    # Generate proteins of various lengths and compositions
+    for i in $(seq 1 50); do
+        # Generate random-ish sequences of varying lengths
+        case $((i % 8)) in
+            0) seq="MKLLILVLVLALVLLTLWFHSTDWYPFTGMHFILFKSPPESRLSARERLSRLLLSLLALRLLLMKQHKAMIVALIVICITAVVAALVTRKDLCEVHIRTGQTEVAVF" ;;
+            1) seq="MGLWSKIKGLVQPTRLLLEYLEEKYEEHLYERDEGDKWRNKKFELGLEFPNLPYYIDGDVKLQRANTEENELHFHKRHPDASVNFLPILVNLKELNVCLQKQVILAV" ;;  
+            2) seq="MKQHKAMIVALIVICITAVVAALVTRKDLCEVHIRTGQTEVAVFKFLFNIKKLTDVFGDDHFFHLQHLRDHVNPNKADRERRQQALSDSDGDAANPALRKAVDLL" ;;
+            3) seq="MKKLILAILVVLVLLTLVFHSTGYPFTGVHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDWKQDHPEKKARKLLILVLALVLLLTLVFHSTGYPFTGVHF" ;;
+            4) seq="MGSSHHHHHHSSGLVPRGSHMKLLILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARERLSKLRKQAMIVALIVICITAVVAALVTRKDLCEVHIRTG" ;;
+            5) seq="MTSKVLILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPPESRLSARERLSRLLLSLLALRLLLFTPKHQSRLLSDPKAIVDDLLDKLVGHFRSDHQKLLSDPN" ;;
+            6) seq="MTTLKKVILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDWMRRGGQEDHPEKKARKQHKAMIVALIVICIT" ;;
+            7) seq="MVLLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDWKQDHPEKKARKQHKAMIVALIVICITAVVAALVTRKDLC" ;;
+        esac
+        
+        # Truncate or extend sequence to create variety in lengths
+        if [ $((i % 3)) -eq 0 ]; then
+            seq=${seq:0:40}  # Shorter proteins
+        elif [ $((i % 5)) -eq 0 ]; then
+            seq=${seq:0:150}  # Longer proteins  
+        else
+            seq=${seq:0:80}   # Medium proteins
+        fi
+        
+        create_mock_pdb "$JOB_SCRATCH/data/mock_protein_$(printf "%03d" $i).pdb" "$seq"
+    done
+    
+    echo "Generated 50 mock PDB files for training"
+    
+else
+    echo "Found existing PDB files in data directory:"
+    find "$JOB_SCRATCH/data" -name "*.pdb" -type f | head -10
+    pdb_count=$(find "$JOB_SCRATCH/data" -name "*.pdb" -type f | wc -l)
+    echo "Total PDB files: $pdb_count"
+fi
 
 # Download ProteinMPNN pre-trained weights if not present
 PROTEINMPNN_WEIGHTS_DIR="$REPO_DIR/proteinmpnn/vanilla_model_weights"

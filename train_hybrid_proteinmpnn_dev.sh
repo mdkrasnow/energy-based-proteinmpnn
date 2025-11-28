@@ -177,13 +177,78 @@ else:
 echo "✓ GPU validation passed"
 
 # ------------------------------------------------------------------------------
-# 5. Quick data directories setup
+# 5. Quick data directories setup with mock PDB files
 # ------------------------------------------------------------------------------
 
 echo "Setting up data directories..."
 mkdir -p "$JOB_SCRATCH/data"
 mkdir -p "$JOB_SCRATCH/checkpoints"
 mkdir -p "$JOB_SCRATCH/logs"
+
+# Generate mock PDB files for dev testing
+echo "Generating mock PDB files for development testing..."
+
+# Function to create a minimal valid PDB file
+create_mock_pdb() {
+    local filename="$1"
+    local sequence="$2"
+    local chain_id="${3:-A}"
+    
+    cat > "$filename" << EOF
+HEADER    MOCK PROTEIN                            01-JAN-25   MOCK            
+TITLE     MOCK PROTEIN FOR DEVELOPMENT TESTING                                 
+COMPND    MOL_ID: 1;                                                          
+COMPND   2 MOLECULE: MOCK PROTEIN;                                           
+COMPND   3 CHAIN: $chain_id;                                                    
+SOURCE    MOL_ID: 1;                                                          
+SOURCE   2 SYNTHETIC: YES                                                     
+KEYWDS    MOCK, DEVELOPMENT, TESTING                                          
+EOF
+
+    # Generate ATOM records for each amino acid
+    local atom_num=1
+    local res_num=1
+    
+    for ((i=0; i<${#sequence}; i++)); do
+        local aa="${sequence:$i:1}"
+        
+        # Simple coordinates using integer arithmetic  
+        local x=$((res_num * 4))
+        local y=$((res_num % 10 * 2))
+        local z=$((res_num % 5 * 2))
+        
+        # Add backbone atoms (N, CA, C, O)
+        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           N  \n" \
+               $atom_num "N" "$aa" "$chain_id" $res_num $x.000 $y.000 $z.000 >> "$filename"
+        ((atom_num++))
+        
+        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
+               $atom_num "CA" "$aa" "$chain_id" $res_num $((x+1)).000 $y.000 $z.000 >> "$filename"
+        ((atom_num++))
+        
+        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
+               $atom_num "C" "$aa" "$chain_id" $res_num $((x+2)).000 $y.000 $z.000 >> "$filename"
+        ((atom_num++))
+        
+        printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           O  \n" \
+               $atom_num "O" "$aa" "$chain_id" $res_num $((x+3)).000 $y.000 $z.000 >> "$filename"
+        ((atom_num++))
+        
+        ((res_num++))
+    done
+    
+    echo "END" >> "$filename"
+}
+
+# Create several mock PDB files with different sequences and lengths
+create_mock_pdb "$JOB_SCRATCH/data/mock_protein_001.pdb" "MKLLILVLVLALVLLTLWFHSTDWYPFTGMHFILFKSPPESRLSARERLSRLLLSLLALRLLL"
+create_mock_pdb "$JOB_SCRATCH/data/mock_protein_002.pdb" "MGLWSKIKGLVQPTRLLLEYLEEKYEEHLYERDEGDKWRNKKFELGLEFPNLPYYIDGDVKL"  
+create_mock_pdb "$JOB_SCRATCH/data/mock_protein_003.pdb" "MKQHKAMIVALIVICITAVVAALVTRKDLCEVHIRTGQTEVAVF"
+create_mock_pdb "$JOB_SCRATCH/data/mock_protein_004.pdb" "MKKLILAILVVLVLLTLVFHSTGYPFTGVHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDW"
+create_mock_pdb "$JOB_SCRATCH/data/mock_protein_005.pdb" "MGSSHHHHHHSSGLVPRGSHMKLLILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARE"
+
+echo "Created 5 mock PDB files in $JOB_SCRATCH/data/"
+ls -la "$JOB_SCRATCH/data"/*.pdb
 
 # Quick check for ProteinMPNN weights with fast fail
 PROTEINMPNN_WEIGHTS_DIR="$REPO_DIR/proteinmpnn/vanilla_model_weights"

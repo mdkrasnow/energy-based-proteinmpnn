@@ -399,8 +399,7 @@ class EnergyModelTrainer:
                 self.optimizer,
                 mode='min',
                 factor=scheduler_config.get('factor', 0.5),
-                patience=scheduler_config.get('patience', 10),
-                verbose=True
+                patience=scheduler_config.get('patience', 10)
             )
         elif scheduler_type == 'cosine':
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
