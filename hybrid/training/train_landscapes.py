@@ -753,11 +753,10 @@ class MultiLandscapeTrainer:
         
         mpnn_config = self.base_config['model']['mpnn_encoder']
         
-        self.shared_encoder = ProteinMPNNBackboneEncoder(
+        self.shared_encoder = ProteinMPNNBackboneEncoder.from_pretrained(
             model_name=mpnn_config.get('model_name', 'v_48_020'),
-            device=self.device,
             freeze_layers=True  # Keep frozen during landscape training
-        )
+        ).to(self.device)
         
         print("Shared ProteinMPNN encoder initialized")
     

@@ -235,11 +235,10 @@ class EnergyModelTrainer:
         mpnn_config = model_config['mpnn_encoder']
         
         # Create encoder (will handle loading pre-trained weights internally)
-        encoder = ProteinMPNNBackboneEncoder(
+        encoder = ProteinMPNNBackboneEncoder.from_pretrained(
             model_name=mpnn_config.get('model_name', 'v_48_020'),
-            device=self.device,
             freeze_layers=mpnn_config.get('freeze_layers', True)
-        )
+        ).to(self.device)
         
         # Initialize energy head
         energy_config = model_config['energy_head']
