@@ -293,6 +293,33 @@ class EnergyModelTrainer:
             seed=self.config.get('seed', 42)
         )
         
+        # Validate dataset has samples (force loading to check actual sample count)
+        try:
+            # Force loading if lazy loading is enabled to get accurate sample count
+            if hasattr(dataset, '_lazy_loaded') and not dataset._lazy_loaded:
+                dataset._load_dataset()
+                dataset._lazy_loaded = True
+            
+            # Check actual sample count
+            actual_sample_count = len(dataset.samples) if hasattr(dataset, 'samples') else len(dataset)
+            if actual_sample_count == 0:
+                raise ValueError(
+                    "Dataset is empty! This is likely due to missing dependencies.\n"
+                    "Please install BioPython for PDB parsing:\n"
+                    "  pip install biopython\n"
+                    "Or check that your data directory contains valid PDB files."
+                )
+        except Exception as e:
+            if "missing dependencies" in str(e) or "Dataset is empty" in str(e):
+                raise  # Re-raise our own error
+            else:
+                # Wrap other errors with context
+                raise ValueError(
+                    f"Failed to validate dataset: {e}\n"
+                    "This may be due to missing dependencies. Please install BioPython:\n"
+                    "  pip install biopython"
+                ) from e
+        
         # Split into train/validation
         val_split = data_config.get('val_split', 0.2)
         val_size = int(len(dataset) * val_split)
