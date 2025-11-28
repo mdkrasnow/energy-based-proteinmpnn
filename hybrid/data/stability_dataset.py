@@ -70,7 +70,19 @@ try:
     PROTEINMPNN_AVAILABLE = True
 except ImportError:
     PROTEINMPNN_AVAILABLE = False
-    warnings.warn("ProteinMPNN utilities not available. Some functionality may be limited.")
+    # Warning is now conditional - only shown when utilities are actually needed
+
+# Import MPNN encoder for backbone features extraction
+try:
+    from ..models.mpnn_encoder import ProteinMPNNBackboneEncoder
+    MPNN_ENCODER_AVAILABLE = True
+except (ImportError, ValueError):
+    try:
+        # Fallback: try absolute import
+        from hybrid.models.mpnn_encoder import ProteinMPNNBackboneEncoder
+        MPNN_ENCODER_AVAILABLE = True
+    except ImportError:
+        MPNN_ENCODER_AVAILABLE = False
 
 
 class StabilityDataset(Dataset):
@@ -111,7 +123,9 @@ class StabilityDataset(Dataset):
         target_transform: Optional[Callable] = None,
         lazy_loading: bool = True,
         include_coordinates: bool = True,
-        max_files: Optional[int] = None
+        max_files: Optional[int] = None,
+        extract_backbone_features: bool = True,
+        mpnn_model_path: Optional[str] = None
     ):
         # Store configuration
         self.data_dir = Path(data_dir)
@@ -126,6 +140,50 @@ class StabilityDataset(Dataset):
         self.lazy_loading = lazy_loading
         self.include_coordinates = include_coordinates
         self.max_files = max_files
+        self.extract_backbone_features = extract_backbone_features
+        self.mpnn_model_path = mpnn_model_path
+        
+        # Initialize backbone encoder if requested and available
+        self.backbone_encoder = None
+        if self.extract_backbone_features:
+            if not MPNN_ENCODER_AVAILABLE:
+                warnings.warn(
+                    "Backbone features extraction requested but MPNN encoder not available. "
+                    "Install ProteinMPNN dependencies and ensure the mpnn_encoder module is accessible."
+                )
+            elif not PROTEINMPNN_AVAILABLE:
+                warnings.warn(
+                    "Backbone features extraction requested but ProteinMPNN utilities not available. "
+                    "Check that proteinmpnn directory exists and protein_mpnn_utils.py is accessible."
+                )
+        
+        if self.extract_backbone_features and MPNN_ENCODER_AVAILABLE and PROTEINMPNN_AVAILABLE:
+            model_path = mpnn_model_path
+            
+            # Fallback to default model path if none provided
+            if not model_path:
+                # Try to find default model in proteinmpnn directory
+                default_paths = [
+                    str(Path(__file__).parent.parent.parent / "proteinmpnn" / "vanilla_model_weights" / "v_48_020.pt"),
+                    str(Path(__file__).parent.parent.parent / "proteinmpnn" / "v_48_020.pt")
+                ]
+                for path in default_paths:
+                    if Path(path).exists():
+                        model_path = path
+                        break
+            
+            if model_path and Path(model_path).exists():
+                try:
+                    self.backbone_encoder = ProteinMPNNBackboneEncoder(
+                        pretrained_ckpt_path=model_path,
+                        freeze_layers=True
+                    )
+                    self.backbone_encoder.eval()
+                except Exception as e:
+                    warnings.warn(f"Failed to initialize backbone encoder: {e}")
+            else:
+                if self.extract_backbone_features:
+                    warnings.warn("Backbone features extraction requested but no valid model path found")
         
         # Default negative generation methods
         if negative_methods is None:
@@ -1777,7 +1835,66 @@ class StabilityDataset(Dataset):
         if self.target_transform and 'label' in sample:
             sample['label'] = self.target_transform(sample['label'])
         
+        # Extract backbone features if available and requested
+        if (self.extract_backbone_features and 
+            self.backbone_encoder is not None and 
+            'coordinates' in sample and 
+            sample['coordinates'] is not None):
+            try:
+                backbone_features = self._extract_backbone_features(sample)
+                if backbone_features is not None:
+                    sample['backbone_features'] = backbone_features
+            except Exception as e:
+                warnings.warn(f"Failed to extract backbone features: {e}")
+        
         return sample
+    
+    def _extract_backbone_features(self, sample: Dict[str, Any]) -> Optional[torch.Tensor]:
+        """Extract backbone features from coordinates using MPNN encoder"""
+        if self.backbone_encoder is None or sample.get('coordinates') is None:
+            return None
+        
+        coordinates = sample['coordinates']  # Expected: [L, 4, 3]
+        sequence = sample['sequence']
+        seq_len = len(sequence)
+        
+        # Validate inputs
+        if seq_len == 0:
+            return None
+        
+        try:
+            # Convert numpy to torch tensor if needed
+            if isinstance(coordinates, np.ndarray):
+                coords_tensor = torch.from_numpy(coordinates).float()
+            else:
+                coords_tensor = coordinates
+            
+            # Validate coordinate shape
+            if len(coords_tensor.shape) != 3 or coords_tensor.shape[0] != seq_len:
+                warnings.warn(f"Coordinate shape mismatch: expected [{seq_len}, 4, 3], got {coords_tensor.shape}")
+                return None
+            
+            # Add batch dimension: [1, L, 4, 3]
+            coords_batch = coords_tensor.unsqueeze(0)
+            
+            # Create required inputs for MPNN encoder
+            batch = {
+                'X': coords_batch,
+                'mask': torch.ones(1, seq_len, dtype=torch.bool),
+                'residue_idx': torch.arange(seq_len, dtype=torch.long).unsqueeze(0),
+                'chain_encoding_all': torch.zeros(1, seq_len, dtype=torch.long)
+            }
+            
+            # Extract backbone features
+            with torch.no_grad():
+                backbone_features = self.backbone_encoder(batch)  # [1, L, hidden_dim]
+                
+            # Remove batch dimension and return
+            return backbone_features.squeeze(0)  # [L, hidden_dim]
+            
+        except Exception as e:
+            warnings.warn(f"Error extracting backbone features: {e}")
+            return None
     
     def get_sample_info(self) -> Dict[str, Any]:
         """Get information about the dataset composition"""

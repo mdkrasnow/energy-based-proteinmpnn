@@ -399,7 +399,9 @@ class EnergyModelTrainer:
             min_sequence_length=data_config.get('min_sequence_length', 20),
             max_files=data_config.get('max_files_debug'),
             lazy_loading=data_config.get('lazy_loading', True),
-            seed=self.config.get('seed', 42)
+            seed=self.config.get('seed', 42),
+            extract_backbone_features=data_config.get('extract_backbone_features', True),
+            mpnn_model_path=data_config.get('mpnn_model_path')
         )
         
         # Validate dataset has samples (force loading to check actual sample count)
@@ -1017,6 +1019,16 @@ class EnergyModelTrainer:
         if pos_mask.sum() == 0 or neg_mask.sum() == 0:
             warnings.warn("Batch contains only positive or only negative samples, skipping")
             # Return empty result to signal skip
+            return {
+                'pos_energies': torch.tensor([], device=self.device),
+                'neg_energies': torch.tensor([], device=self.device),
+                'negative_types': [],
+                'skip_batch': True
+            }
+        
+        # Check if backbone features are available
+        if 'backbone_features' not in batch:
+            warnings.warn("Backbone features missing from batch. This may indicate dataset configuration issues.")
             return {
                 'pos_energies': torch.tensor([], device=self.device),
                 'neg_energies': torch.tensor([], device=self.device),
