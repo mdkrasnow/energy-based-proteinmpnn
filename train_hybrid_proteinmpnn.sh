@@ -263,79 +263,13 @@ fi
 # 6. Prepare training configuration
 # ------------------------------------------------------------------------------
 
-echo "Preparing training configuration..."
+echo "Using production training configuration..."
 
-# Create optimal training configuration
+# Copy production configuration from repository
 TRAINING_CONFIG="$JOB_SCRATCH/training_config.json"
+cp "$REPO_DIR/hybrid/training/config_production.json" "$TRAINING_CONFIG"
 
-cat > "$TRAINING_CONFIG" << 'EOF'
-{
-    "model": {
-        "mpnn_encoder": {
-            "model_name": "v_48_020",
-            "hidden_dim": 128,
-            "freeze_layers": true
-        },
-        "energy_head": {
-            "hidden_dim": 512,
-            "num_layers": 3,
-            "dropout": 0.1,
-            "activation": "relu",
-            "use_batch_norm": true
-        },
-        "sequence_repr": {
-            "temperature_schedule": [1.0, 0.5, 0.1],
-            "min_temperature": 0.001,
-            "max_temperature": 10.0
-        }
-    },
-    "data": {
-        "data_dir": "./data",
-        "positive_ratio": 0.5,
-        "negative_methods": ["random", "shuffle", "adversarial"],
-        "max_sequence_length": 500,
-        "min_sequence_length": 20,
-        "val_split": 0.2,
-        "lazy_loading": true
-    },
-    "training": {
-        "batch_size": 32,
-        "max_epochs": 100,
-        "patience": 20,
-        "save_frequency": 10,
-        "num_workers": 8,
-        "max_grad_norm": 1.0
-    },
-    "optimization": {
-        "optimizer": "adamw",
-        "learning_rate": 1e-4,
-        "weight_decay": 0.01,
-        "betas": [0.9, 0.999],
-        "scheduler": {
-            "type": "reduce_on_plateau",
-            "factor": 0.5,
-            "patience": 10
-        }
-    },
-    "loss": {
-        "margin": 1.0,
-        "temperature": 0.1,
-        "ranking_weight": 1.0,
-        "contrastive_weight": 1.0,
-        "entropy_weight": 0.01,
-        "smoothness_weight": 0.001,
-        "negative_weights": {
-            "random": 1.0,
-            "shuffle": 1.0,
-            "adversarial": 1.2
-        }
-    },
-    "seed": 42,
-    "allow_unsafe_checkpoint_loading": false
-}
-EOF
-
-echo "Training configuration created at: $TRAINING_CONFIG"
+echo "Training configuration copied from production config to: $TRAINING_CONFIG"
 
 # Adjust batch size based on GPU memory
 GPU_MEMORY=$(python -c "
@@ -359,8 +293,8 @@ elif [ "$GPU_MEMORY" -lt 8 ]; then
 fi
 
 
-# Update config to point to data directory
-sed -i "s|\"data_dir\": \"./data\"|\"data_dir\": \"$JOB_SCRATCH/data\"|" "$TRAINING_CONFIG"
+# Update config to point to data directory in scratch
+sed -i "s|\"data_dir\": \"proteinmpnn/inputs\"|\"data_dir\": \"$JOB_SCRATCH/data\"|" "$TRAINING_CONFIG"
 
 # ------------------------------------------------------------------------------
 # 7. Run Hybrid ProteinMPNN Training

@@ -1,16 +1,18 @@
 {
-    "experiment_name": "energy_model_training",
+    "experiment_name": "energy_model_production_training",
     "seed": 42,
     
     "data": {
-        "data_dir": "proteinmpnn/inputs/PDB_monomers/pdbs",
+        "data_dir": "proteinmpnn/inputs",
         "positive_ratio": 0.5,
         "negative_methods": ["random", "mutated", "failed_design"],
         "max_sequence_length": 500,
         "min_sequence_length": 20,
         "val_split": 0.2,
         "lazy_loading": true,
-        "max_files_debug": null
+        "max_files_debug": null,
+        "structure_extensions": [".pdb"],
+        "include_subdirectories": true
     },
     
     "model": {

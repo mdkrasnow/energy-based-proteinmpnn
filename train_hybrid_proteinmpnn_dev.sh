@@ -233,80 +233,14 @@ fi
 # 6. Dev training configuration
 # ------------------------------------------------------------------------------
 
-echo "Creating dev training configuration..."
+echo "Using dev training configuration..."
 TRAINING_CONFIG="$JOB_SCRATCH/dev_training_config.json"
 
-cat > "$TRAINING_CONFIG" << 'EOF'
-{
-    "model": {
-        "mpnn_encoder": {
-            "model_name": "v_48_020",
-            "hidden_dim": 64,
-            "freeze_layers": true
-        },
-        "energy_head": {
-            "hidden_dim": 128,
-            "num_layers": 2,
-            "dropout": 0.1,
-            "activation": "relu",
-            "use_batch_norm": true
-        },
-        "sequence_repr": {
-            "temperature_schedule": [1.0, 0.5],
-            "min_temperature": 0.01,
-            "max_temperature": 2.0
-        }
-    },
-    "data": {
-        "data_dir": "./data",
-        "positive_ratio": 0.5,
-        "negative_methods": ["random"],
-        "max_sequence_length": 100,
-        "min_sequence_length": 20,
-        "val_split": 0.2,
-        "lazy_loading": true,
-        "max_samples": null
-    },
-    "training": {
-        "batch_size": 4,
-        "max_epochs": 3,
-        "patience": 2,
-        "save_frequency": 1,
-        "num_workers": 2,
-        "max_grad_norm": 1.0,
-        "early_stop_patience": 2
-    },
-    "optimization": {
-        "optimizer": "adamw",
-        "learning_rate": 1e-3,
-        "weight_decay": 0.01,
-        "betas": [0.9, 0.999],
-        "scheduler": {
-            "type": "reduce_on_plateau",
-            "factor": 0.5,
-            "patience": 2
-        }
-    },
-    "loss": {
-        "margin": 1.0,
-        "temperature": 0.1,
-        "ranking_weight": 1.0,
-        "contrastive_weight": 1.0,
-        "entropy_weight": 0.01,
-        "smoothness_weight": 0.001,
-        "negative_weights": {
-            "random": 1.0
-        }
-    },
-    "seed": 42,
-    "allow_unsafe_checkpoint_loading": true,
-    "debug_mode": true,
-    "fast_dev_run": true
-}
-EOF
+# Copy the dev config from repository and update paths for scratch
+cp "$REPO_DIR/hybrid/training/config_dev.json" "$TRAINING_CONFIG"
 
-# Update paths
-sed -i "s|\"data_dir\": \"./data\"|\"data_dir\": \"$JOB_SCRATCH/data\"|" "$TRAINING_CONFIG"
+# Update data directory to use copied PDB files in scratch
+sed -i "s|\"data_dir\": \"proteinmpnn/inputs/PDB_monomers/pdbs\"|\"data_dir\": \"$JOB_SCRATCH/data\"|" "$TRAINING_CONFIG"
 
 echo "Dev training configuration created at: $TRAINING_CONFIG"
 
