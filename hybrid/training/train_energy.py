@@ -515,7 +515,22 @@ class EnergyModelTrainer:
                         if not isinstance(feat, torch.Tensor):
                             feat = torch.tensor(feat)
                         backbone_features.append(feat)
-                    collated['backbone_features'] = torch.stack(backbone_features)
+                    
+                    # Pad backbone_features to same length for stacking
+                    if backbone_features:
+                        max_len = max(feat.size(0) for feat in backbone_features)
+                        padded_backbone_features = []
+                        for feat in backbone_features:
+                            if feat.size(0) < max_len:
+                                # Pad with zeros for backbone features
+                                padding_size = max_len - feat.size(0)
+                                feature_dim = feat.size(1)
+                                padding = torch.zeros(padding_size, feature_dim, dtype=feat.dtype, device=feat.device)
+                                feat = torch.cat([feat, padding], dim=0)
+                            padded_backbone_features.append(feat)
+                        collated['backbone_features'] = torch.stack(padded_backbone_features)
+                    else:
+                        collated['backbone_features'] = torch.empty((0, 0, 128))
                 else:
                     print(f"  WARNING: Not all items have backbone_features, skipping backbone feature collation")
                     # Count how many are missing
