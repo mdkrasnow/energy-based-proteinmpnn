@@ -476,19 +476,35 @@ class EnergyModelTrainer:
         # Custom collate function to handle protein data
         def collate_fn(batch):
             """Custom collate function for protein dataset with batch balance validation"""
+            print("\n=== DEBUG: collate_fn ===\n")
+            print(f"  Batch size: {len(batch)}")
+            
             # Batch is a list of individual samples from StabilityDataset
             collated = {}
+            
+            # Debug: Check what's in each sample
+            for i, item in enumerate(batch):
+                print(f"  Sample {i}: keys={list(item.keys())}, label={item.get('label')}, has_backbone_features={'backbone_features' in item}")
+                if 'backbone_features' in item:
+                    bf = item['backbone_features']
+                    if bf is not None:
+                        print(f"    backbone_features type: {type(bf)}, shape: {bf.shape if hasattr(bf, 'shape') else 'N/A'}")
+                    else:
+                        print(f"    backbone_features is None!")
             
             # Extract labels for balance checking
             labels = [item.get('label') for item in batch]
             pos_count = sum(1 for label in labels if label == 1)
             neg_count = sum(1 for label in labels if label == 0)
             
+            print(f"  Batch composition: {pos_count} positive, {neg_count} negative")
+            
             # Warn if batch is imbalanced (but don't fail - BalancedBatchSampler should handle this)
             if pos_count == 0 or neg_count == 0:
-                print(f"Warning: Imbalanced batch detected - {pos_count} positive, {neg_count} negative samples")
+                print(f"  WARNING: Imbalanced batch detected - {pos_count} positive, {neg_count} negative samples")
             
             # Stack/pad tensors appropriately with strict error handling
+            print(f"  Checking for backbone_features in batch[0]...")
             if 'backbone_features' in batch[0]:
                 backbone_features = []
                 for item in batch:
@@ -536,6 +552,12 @@ class EnergyModelTrainer:
             collated['generation_method'] = [item.get('generation_method', None) for item in batch]
             if 'structure_id' in batch[0]:
                 collated['structure_id'] = [item['structure_id'] for item in batch]
+            
+            print(f"  Final collated keys: {list(collated.keys())}")
+            print(f"  Has backbone_features in collated: {'backbone_features' in collated}")
+            if 'backbone_features' in collated:
+                print(f"  Collated backbone_features shape: {collated['backbone_features'].shape}")
+            print(f"=== END DEBUG collate_fn ===\n")
             
             return collated
         
@@ -1010,14 +1032,25 @@ class EnergyModelTrainer:
     
     def _forward_pass(self, batch: Dict) -> Dict[str, torch.Tensor]:
         """Perform forward pass through the model"""
+        print(f"\n=== DEBUG: _forward_pass ===")
+        print(f"  Batch keys: {list(batch.keys())}")
+        
         # Split batch by labels
         labels = batch['label']  # [B] - 1 for positive, 0 for negative
+        print(f"  Labels shape: {labels.shape}, dtype: {labels.dtype}")
+        print(f"  Labels values: {labels}")
         
         pos_mask = labels == 1
         neg_mask = labels == 0
         
+        pos_count = pos_mask.sum().item()
+        neg_count = neg_mask.sum().item()
+        print(f"  Positive samples: {pos_count}")
+        print(f"  Negative samples: {neg_count}")
+        
         if pos_mask.sum() == 0 or neg_mask.sum() == 0:
-            warnings.warn("Batch contains only positive or only negative samples, skipping")
+            print(f"  ERROR: Batch imbalanced - skipping")
+            warnings.warn(f"Batch contains only {'positive' if pos_count > 0 else 'negative'} samples ({pos_count} pos, {neg_count} neg), skipping")
             # Return empty result to signal skip
             return {
                 'pos_energies': torch.tensor([], device=self.device),
@@ -1027,7 +1060,10 @@ class EnergyModelTrainer:
             }
         
         # Check if backbone features are available
+        print(f"  Checking for backbone_features in batch...")
         if 'backbone_features' not in batch:
+            print(f"  ERROR: backbone_features key missing from batch")
+            print(f"  Available keys: {list(batch.keys())}")
             warnings.warn("Backbone features missing from batch. This may indicate dataset configuration issues.")
             return {
                 'pos_energies': torch.tensor([], device=self.device),
@@ -1035,6 +1071,13 @@ class EnergyModelTrainer:
                 'negative_types': [],
                 'skip_batch': True
             }
+        
+        print(f"  backbone_features found in batch")
+        print(f"  backbone_features type: {type(batch['backbone_features'])}")
+        if isinstance(batch['backbone_features'], torch.Tensor):
+            print(f"  backbone_features shape: {batch['backbone_features'].shape}")
+        else:
+            print(f"  backbone_features value: {batch['backbone_features']}")
         
         # Process positive samples
         if pos_mask.sum() > 0:

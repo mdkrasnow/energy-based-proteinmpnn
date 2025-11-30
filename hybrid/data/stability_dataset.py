@@ -1893,16 +1893,36 @@ class StabilityDataset(Dataset):
             sample['label'] = self.target_transform(sample['label'])
         
         # Extract backbone features if available and requested
+        print(f"\n=== DEBUG: __getitem__ for sample {idx} ===")
+        print(f"  extract_backbone_features: {self.extract_backbone_features}")
+        print(f"  backbone_encoder is not None: {self.backbone_encoder is not None}")
+        print(f"  'coordinates' in sample: {'coordinates' in sample}")
+        if 'coordinates' in sample:
+            print(f"  sample['coordinates'] is not None: {sample['coordinates'] is not None}")
+            if sample['coordinates'] is not None:
+                print(f"  coordinates shape: {sample['coordinates'].shape if hasattr(sample['coordinates'], 'shape') else 'N/A'}")
+        
         if (self.extract_backbone_features and 
             self.backbone_encoder is not None and 
             'coordinates' in sample and 
             sample['coordinates'] is not None):
+            print(f"  Attempting to extract backbone features...")
             try:
                 backbone_features = self._extract_backbone_features(sample)
                 if backbone_features is not None:
+                    print(f"  Successfully extracted backbone features, shape: {backbone_features.shape}")
                     sample['backbone_features'] = backbone_features
+                else:
+                    print(f"  WARNING: _extract_backbone_features returned None")
             except Exception as e:
+                print(f"  ERROR: Failed to extract backbone features: {type(e).__name__}: {e}")
                 warnings.warn(f"Failed to extract backbone features: {e}")
+        else:
+            print(f"  Skipping backbone feature extraction")
+        
+        print(f"  Final sample keys: {list(sample.keys())}")
+        print(f"  Has backbone_features: {'backbone_features' in sample}")
+        print(f"=== END DEBUG __getitem__ ===")
         
         return sample
     
@@ -1920,36 +1940,70 @@ class StabilityDataset(Dataset):
             return None
         
         try:
+            # DEBUG: Log input information
+            print(f"\n=== DEBUG: _extract_backbone_features ===")
+            print(f"  Sequence length: {seq_len}")
+            print(f"  Coordinates type: {type(coordinates)}")
+            
             # Convert numpy to torch tensor if needed
             if isinstance(coordinates, np.ndarray):
+                print(f"  Converting numpy array to tensor, shape: {coordinates.shape}, dtype: {coordinates.dtype}")
                 coords_tensor = torch.from_numpy(coordinates).float()
             else:
+                print(f"  Coordinates already tensor, shape: {coordinates.shape}, dtype: {coordinates.dtype}")
                 coords_tensor = coordinates
             
             # Validate coordinate shape
+            print(f"  Coords tensor shape after conversion: {coords_tensor.shape}")
             if len(coords_tensor.shape) != 3 or coords_tensor.shape[0] != seq_len:
                 warnings.warn(f"Coordinate shape mismatch: expected [{seq_len}, 4, 3], got {coords_tensor.shape}")
+                print(f"  ERROR: Shape mismatch - returning None")
                 return None
             
             # Add batch dimension: [1, L, 4, 3]
+            print(f"  Adding batch dimension...")
             coords_batch = coords_tensor.unsqueeze(0)
+            print(f"  Coords batch shape: {coords_batch.shape}")
             
             # Create required inputs for MPNN encoder
+            print(f"  Creating MPNN encoder inputs...")
             batch = {
                 'X': coords_batch,
                 'mask': torch.ones(1, seq_len, dtype=torch.bool),
                 'residue_idx': torch.arange(seq_len, dtype=torch.long).unsqueeze(0),
                 'chain_encoding_all': torch.zeros(1, seq_len, dtype=torch.long)
             }
+            print(f"  Batch keys: {list(batch.keys())}")
+            print(f"  X shape: {batch['X'].shape}, dtype: {batch['X'].dtype}")
+            print(f"  mask shape: {batch['mask'].shape}, dtype: {batch['mask'].dtype}")
+            print(f"  residue_idx shape: {batch['residue_idx'].shape}, dtype: {batch['residue_idx'].dtype}")
+            print(f"  chain_encoding_all shape: {batch['chain_encoding_all'].shape}, dtype: {batch['chain_encoding_all'].dtype}")
             
             # Extract backbone features
+            print(f"  Calling backbone_encoder...")
             with torch.no_grad():
-                backbone_features = self.backbone_encoder(batch)  # [1, L, hidden_dim]
+                try:
+                    backbone_features = self.backbone_encoder(batch)  # [1, L, hidden_dim]
+                    print(f"  Backbone features extracted successfully, shape: {backbone_features.shape}")
+                except Exception as encoder_error:
+                    print(f"  ERROR in backbone_encoder: {type(encoder_error).__name__}: {encoder_error}")
+                    import traceback
+                    print(f"  Traceback:\n{traceback.format_exc()}")
+                    raise
                 
             # Remove batch dimension and return
-            return backbone_features.squeeze(0)  # [L, hidden_dim]
+            result = backbone_features.squeeze(0)  # [L, hidden_dim]
+            print(f"  Final result shape: {result.shape}")
+            print(f"=== END DEBUG ===")
+            return result
             
         except Exception as e:
+            print(f"\n=== ERROR in _extract_backbone_features ===")
+            print(f"  Exception type: {type(e).__name__}")
+            print(f"  Exception message: {e}")
+            import traceback
+            print(f"  Full traceback:\n{traceback.format_exc()}")
+            print(f"=== END ERROR ===")
             warnings.warn(f"Error extracting backbone features: {e}")
             return None
     
