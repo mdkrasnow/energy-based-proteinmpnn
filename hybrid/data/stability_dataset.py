@@ -401,16 +401,22 @@ class StabilityDataset(Dataset):
         try:
             if PROTEINMPNN_AVAILABLE:
                 # Use ProteinMPNN's parsing function
-                xyz, seq, min_resn, max_resn = parse_PDB_biounits(str(struct_file))
+                # Request all 4 backbone atoms: N, CA, C, O
+                xyz, seq = parse_PDB_biounits(str(struct_file), atoms=['N', 'CA', 'C', 'O'])
                 
-                # Extract first chain for simplicity
-                chain_keys = list(xyz.keys())
-                if not chain_keys:
+                # Check if parsing failed
+                if isinstance(xyz, str) and xyz == 'no_chain':
                     return None
                 
-                first_chain = chain_keys[0]
-                coordinates = xyz[first_chain]  # [L, 4, 3] format
-                sequence = seq[first_chain]
+                # xyz and seq are returned as numpy arrays
+                # seq is a list/array of sequences (one per chain)
+                if len(seq) == 0 or not seq[0]:
+                    return None
+                
+                # Use first chain
+                coordinates = xyz  # [L, 4, 3] format (N, CA, C, O atoms)
+                sequence = seq[0]  # First sequence string
+                first_chain = 'A'  # Default chain ID
                 
             elif BIOPYTHON_AVAILABLE:
                 # Fallback to BioPython parsing
@@ -1619,23 +1625,47 @@ class StabilityDataset(Dataset):
         
         try:
             if PROTEINMPNN_AVAILABLE:
-                # Use ProteinMPNN's parsing
-                xyz, seq, min_resn, max_resn = parse_PDB_biounits(str(pdb_path))
+                # Use ProteinMPNN's parsing - request all 4 backbone atoms
+                xyz, seq = parse_PDB_biounits(str(pdb_path), atoms=['N', 'CA', 'C', 'O'])
                 
-                for chain_id, coordinates in xyz.items():
-                    if target_chain and chain_id != target_chain:
-                        continue
-                    
-                    sequence = seq.get(chain_id, "")
-                    if not sequence:
-                        continue
-                    
-                    sample = self._create_sample_dict(
-                        sequence, coordinates, pdb_path, chain_id, validate_structure
-                    )
-                    
-                    if sample:
-                        samples.append(sample)
+                # Check if parsing failed
+                if isinstance(xyz, str) and xyz == 'no_chain':
+                    return samples
+                
+                # For single-chain PDBs, xyz and seq are arrays, not dicts
+                # Convert to consistent format
+                if not isinstance(seq, dict):
+                    # Single chain case - seq is array of sequences
+                    if len(seq) > 0:
+                        sequence = seq[0]
+                        sample = self._create_sample_dict(
+                            sequence=sequence,
+                            coordinates=xyz,
+                            pdb_path=pdb_path,
+                            chain_id='A',
+                            validate_structure=validate_structure
+                        )
+                        if sample:
+                            samples.append(sample)
+                else:
+                    # Multi-chain case (though parse_PDB_biounits doesn't return dicts)
+                    for chain_id, coordinates in xyz.items():
+                        if target_chain and chain_id != target_chain:
+                            continue
+                        
+                        sequence = seq.get(chain_id, "")
+                        if not sequence:
+                            continue
+                        
+                        sample = self._create_sample_dict(
+                            sequence=sequence,
+                            coordinates=coordinates,
+                            pdb_path=pdb_path,
+                            chain_id=chain_id,
+                            validate_structure=validate_structure
+                        )
+                        if sample:
+                            samples.append(sample)
             
             elif BIOPYTHON_AVAILABLE:
                 # Use BioPython parsing
