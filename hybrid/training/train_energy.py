@@ -1067,18 +1067,26 @@ class EnergyModelTrainer:
                 'skip_batch': True
             }
         
-        # Check if backbone features are available
+        # Check if backbone features are available 
         print(f"  Checking for backbone_features in batch...")
         if 'backbone_features' not in batch:
             print(f"  ERROR: backbone_features key missing from batch")
             print(f"  Available keys: {list(batch.keys())}")
-            warnings.warn("Backbone features missing from batch. This may indicate dataset configuration issues.")
+            warnings.warn("Backbone features key missing from batch. This indicates dataset configuration issues.")
             return {
                 'pos_energies': torch.tensor([], device=self.device),
                 'neg_energies': torch.tensor([], device=self.device),
                 'negative_types': [],
                 'skip_batch': True
             }
+        
+        # Check for degraded feature quality (placeholder features) 
+        if 'backbone_features_valid' in batch:
+            valid_features = batch['backbone_features_valid']
+            invalid_count = (~valid_features).sum().item() if isinstance(valid_features, torch.Tensor) else sum(1 for v in valid_features if not v)
+            if invalid_count > 0:
+                print(f"  WARNING: {invalid_count} samples using placeholder backbone features (degraded quality)")
+                warnings.warn(f"Batch contains {invalid_count} samples with placeholder backbone features - training quality may be affected")
         
         print(f"  backbone_features found in batch")
         print(f"  backbone_features type: {type(batch['backbone_features'])}")

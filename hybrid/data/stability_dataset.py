@@ -1908,6 +1908,7 @@ class StabilityDataset(Dataset):
             if sample['coordinates'] is not None:
                 print(f"  coordinates shape: {sample['coordinates'].shape if hasattr(sample['coordinates'], 'shape') else 'N/A'}")
         
+        # Always ensure backbone_features key exists with valid tensor
         if (self.extract_backbone_features and 
             self.backbone_encoder is not None and 
             'coordinates' in sample and 
@@ -1918,19 +1919,40 @@ class StabilityDataset(Dataset):
                 if backbone_features is not None:
                     print(f"  Successfully extracted backbone features, shape: {backbone_features.shape}")
                     sample['backbone_features'] = backbone_features
+                    sample['backbone_features_valid'] = True
                 else:
-                    print(f"  WARNING: _extract_backbone_features returned None")
+                    print(f"  WARNING: _extract_backbone_features returned None, creating placeholder")
+                    sample['backbone_features'] = self._create_placeholder_backbone_features(sample['sequence'])
+                    sample['backbone_features_valid'] = False
+                    warnings.warn("Using placeholder backbone features due to coordinate issues - model performance may be degraded")
             except Exception as e:
                 print(f"  ERROR: Failed to extract backbone features: {type(e).__name__}: {e}")
                 warnings.warn(f"Failed to extract backbone features: {e}")
+                sample['backbone_features'] = self._create_placeholder_backbone_features(sample['sequence'])
+                sample['backbone_features_valid'] = False
         else:
-            print(f"  Skipping backbone feature extraction")
+            print(f"  Skipping backbone feature extraction, creating placeholder")
+            sample['backbone_features'] = self._create_placeholder_backbone_features(sample['sequence'])
+            sample['backbone_features_valid'] = False
         
         print(f"  Final sample keys: {list(sample.keys())}")
         print(f"  Has backbone_features: {'backbone_features' in sample}")
         print(f"=== END DEBUG __getitem__ ===")
         
         return sample
+    
+    def _create_placeholder_backbone_features(self, sequence: List[str]) -> torch.Tensor:
+        """Create placeholder backbone features when extraction fails"""
+        seq_len = len(sequence)
+        backbone_dim = 128  # Standard backbone feature dimension
+        
+        # Create zero-filled placeholder with correct shape [seq_len, backbone_dim]
+        placeholder = torch.zeros(seq_len, backbone_dim, dtype=torch.float32)
+        
+        # Add small amount of noise to avoid all-zero artifacts that might confuse training
+        placeholder += torch.randn_like(placeholder) * 0.01
+        
+        return placeholder
     
     def _extract_backbone_features(self, sample: Dict[str, Any]) -> Optional[torch.Tensor]:
         """Extract backbone features from coordinates using MPNN encoder"""
@@ -1959,12 +1981,50 @@ class StabilityDataset(Dataset):
                 print(f"  Coordinates already tensor, shape: {coordinates.shape}, dtype: {coordinates.dtype}")
                 coords_tensor = coordinates
             
-            # Validate coordinate shape
+            # Validate and fix coordinate shape
             print(f"  Coords tensor shape after conversion: {coords_tensor.shape}")
-            if len(coords_tensor.shape) != 3 or coords_tensor.shape[0] != seq_len:
-                warnings.warn(f"SAFETY NET: Coordinate shape mismatch in backbone feature extraction: expected [{seq_len}, 4, 3], got {coords_tensor.shape}. This should have been caught earlier during dataset loading.")
-                print(f"  ERROR: Shape mismatch detected (seq_len={seq_len}, coord_len={coords_tensor.shape[0]}) - returning None")
+            if len(coords_tensor.shape) != 3:
+                warnings.warn(f"Invalid coordinate tensor shape: expected 3D tensor [L, 4, 3], got {coords_tensor.shape}")
+                print(f"  ERROR: Invalid coordinate tensor dimensionality - returning None")
                 return None
+            
+            if coords_tensor.shape[1] != 4 or coords_tensor.shape[2] != 3:
+                warnings.warn(f"Invalid coordinate tensor format: expected [L, 4, 3], got {coords_tensor.shape}")
+                print(f"  ERROR: Invalid coordinate format - returning None")
+                return None
+                
+            coord_len = coords_tensor.shape[0]
+            if coord_len != seq_len:
+                # Check for reasonable mismatch bounds
+                mismatch_ratio = abs(coord_len - seq_len) / max(coord_len, seq_len) if max(coord_len, seq_len) > 0 else 1.0
+                if mismatch_ratio > 0.5:  # More than 50% mismatch is suspicious
+                    warnings.warn(f"Large coordinate/sequence length mismatch ({mismatch_ratio:.1%}): coord_len={coord_len}, seq_len={seq_len}. Rejecting sample.")
+                    print(f"  ERROR: Excessive length mismatch - returning None")
+                    return None
+                
+                warnings.warn(f"Coordinate/sequence length mismatch: coord_len={coord_len}, seq_len={seq_len}. Attempting to fix...")
+                print(f"  WARNING: Length mismatch (seq_len={seq_len}, coord_len={coord_len}) - attempting fix")
+                
+                if coord_len > seq_len:
+                    # Truncate coordinates to match sequence (lose structural info)
+                    coords_tensor = coords_tensor[:seq_len]
+                    print(f"  Fixed by truncating coordinates to {seq_len} residues")
+                    warnings.warn(f"Truncated {coord_len - seq_len} coordinates - structural information lost")
+                elif coord_len < seq_len:
+                    # Pad with last known coordinate to avoid (0,0,0) artifacts
+                    padding_size = seq_len - coord_len
+                    if coord_len > 0:
+                        # Repeat last coordinate for padding
+                        last_coord = coords_tensor[-1:].expand(padding_size, -1, -1)
+                        coords_tensor = torch.cat([coords_tensor, last_coord], dim=0)
+                        print(f"  Fixed by padding {padding_size} coordinates with last known position")
+                    else:
+                        # No coordinates to work with - return None
+                        print(f"  ERROR: No coordinates available for padding - returning None")
+                        return None
+                    warnings.warn(f"Padded {padding_size} coordinates - features may be degraded")
+                    
+                print(f"  Final coordinate shape: {coords_tensor.shape}")
             
             # Add batch dimension: [1, L, 4, 3]
             print(f"  Adding batch dimension...")
