@@ -507,12 +507,20 @@ class EnergyModelTrainer:
             print(f"  Checking for backbone_features in batch[0]...")
             if 'backbone_features' in batch[0]:
                 backbone_features = []
-                for item in batch:
-                    feat = item['backbone_features']
-                    if not isinstance(feat, torch.Tensor):
-                        feat = torch.tensor(feat)
-                    backbone_features.append(feat)
-                collated['backbone_features'] = torch.stack(backbone_features)
+                # Check if all items in the batch have backbone_features
+                all_have_features = all('backbone_features' in item and item['backbone_features'] is not None for item in batch)
+                if all_have_features:
+                    for item in batch:
+                        feat = item['backbone_features']
+                        if not isinstance(feat, torch.Tensor):
+                            feat = torch.tensor(feat)
+                        backbone_features.append(feat)
+                    collated['backbone_features'] = torch.stack(backbone_features)
+                else:
+                    print(f"  WARNING: Not all items have backbone_features, skipping backbone feature collation")
+                    # Count how many are missing
+                    missing_count = sum(1 for item in batch if 'backbone_features' not in item or item['backbone_features'] is None)
+                    print(f"  {missing_count}/{len(batch)} items missing backbone_features")
             
             if 'sequence' in batch[0]:
                 sequences = []

@@ -316,6 +316,7 @@ class ProteinFeatures(nn.Module):
         dX = torch.unsqueeze(X,1) - torch.unsqueeze(X,2)
         D = mask_2D * torch.sqrt(torch.sum(dX**2, 3) + eps)
         D_max, _ = torch.max(D, -1, keepdim=True)
+        mask_2D = mask_2D.float()
         D_adjust = D + (1. - mask_2D) * D_max
         sampled_top_k = self.top_k
         D_neighbors, E_idx = torch.topk(D_adjust, np.minimum(self.top_k, X.shape[1]), dim=-1, largest=False)

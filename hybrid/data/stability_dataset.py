@@ -453,6 +453,12 @@ class StabilityDataset(Dataset):
             if not (self.min_sequence_length <= seq_len <= self.max_sequence_length):
                 return None
             
+            # Validate structure quality if coordinates are included
+            if self.include_coordinates and coordinates is not None:
+                if not self._validate_structure_quality(coordinates, sequence):
+                    warnings.warn(f"Structure quality validation failed for {struct_file} (seq_len: {len(sequence)}, coord_shape: {coordinates.shape})")
+                    return None
+            
             # Create sample data structure
             sample = {
                 'sequence': sequence,
@@ -1956,8 +1962,8 @@ class StabilityDataset(Dataset):
             # Validate coordinate shape
             print(f"  Coords tensor shape after conversion: {coords_tensor.shape}")
             if len(coords_tensor.shape) != 3 or coords_tensor.shape[0] != seq_len:
-                warnings.warn(f"Coordinate shape mismatch: expected [{seq_len}, 4, 3], got {coords_tensor.shape}")
-                print(f"  ERROR: Shape mismatch - returning None")
+                warnings.warn(f"SAFETY NET: Coordinate shape mismatch in backbone feature extraction: expected [{seq_len}, 4, 3], got {coords_tensor.shape}. This should have been caught earlier during dataset loading.")
+                print(f"  ERROR: Shape mismatch detected (seq_len={seq_len}, coord_len={coords_tensor.shape[0]}) - returning None")
                 return None
             
             # Add batch dimension: [1, L, 4, 3]
@@ -1969,7 +1975,7 @@ class StabilityDataset(Dataset):
             print(f"  Creating MPNN encoder inputs...")
             batch = {
                 'X': coords_batch,
-                'mask': torch.ones(1, seq_len, dtype=torch.bool),
+                'mask': torch.ones(1, seq_len, dtype=torch.float32),
                 'residue_idx': torch.arange(seq_len, dtype=torch.long).unsqueeze(0),
                 'chain_encoding_all': torch.zeros(1, seq_len, dtype=torch.long)
             }
