@@ -101,6 +101,8 @@ cd "$REPO_DIR" || {
 
 echo "Working from repository directory: $(pwd)"
 
+
+
 # ------------------------------------------------------------------------------
 # 3. Quick validation of required files
 # ------------------------------------------------------------------------------
@@ -131,6 +133,35 @@ module load python/3.10.9-fasrc01 || {
     exit 1
 }
 
+module load cuda/12.2.0-fasrc01
+
+# Explicitly add proteinmpnn to PYTHONPATH to ensure imports work
+# Use ${PYTHONPATH:+:${PYTHONPATH}} to safely append only if set (avoids unbound variable error)
+export PYTHONPATH="$(pwd)/proteinmpnn:$(pwd)${PYTHONPATH:+:${PYTHONPATH}}"
+echo "Updated PYTHONPATH: $PYTHONPATH"
+
+# DEBUG: Check python imports (now that python is loaded)
+echo "Checking python imports..."
+python -c "
+import sys
+import os
+print(f'Python version: {sys.version}')
+print(f'CWD: {os.getcwd()}')
+print(f'sys.path: {sys.path}')
+
+try:
+    import protein_mpnn_utils
+    print('SUCCESS: Imported protein_mpnn_utils')
+except Exception as e:
+    print(f'FAILURE: Could not import protein_mpnn_utils: {e}')
+
+try:
+    from hybrid.models import mpnn_encoder
+    print('SUCCESS: Imported hybrid.models.mpnn_encoder')
+except Exception as e:
+    print(f'FAILURE: Could not import hybrid.models.mpnn_encoder: {e}')
+"
+
 module load cuda/12.2.0-fasrc01 || {
     echo "ERROR: Failed to load CUDA module"
     exit 1
@@ -138,19 +169,19 @@ module load cuda/12.2.0-fasrc01 || {
 
 export PATH="$HOME/.local/bin:$PATH"
 
-# Quick pip install with timeout
-echo "Installing minimal dependencies for dev testing..."
-timeout 300 pip install --user -q torch torchvision torchaudio biopython || {
-    echo "ERROR: Failed to install PyTorch within 5 minutes"
+# Full dependency installation to match production environment
+echo "Installing dependencies to ~/.local ..."
+timeout 600 pip install --user -q torch torchvision torchaudio \
+    numpy pandas matplotlib seaborn \
+    tqdm einops accelerate \
+    tensorboard scikit-learn \
+    biopython biotite mdanalysis \
+    ipdb jupyter || {
+    echo "ERROR: Failed to install dependencies within 10 minutes"
     exit 1
 }
 
-timeout 180 pip install --user -q numpy pandas tqdm || {
-    echo "ERROR: Failed to install basic dependencies within 3 minutes"
-    exit 1
-}
-
-echo "Basic dependencies installed successfully."
+echo "Dependencies installed successfully."
 
 echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 
@@ -239,8 +270,37 @@ TRAINING_CONFIG="$JOB_SCRATCH/dev_training_config.json"
 # Copy the dev config from repository and update paths for scratch
 cp "$REPO_DIR/hybrid/training/config_dev.json" "$TRAINING_CONFIG"
 
-# Update data directory to use copied PDB files in scratch
-sed -i "s|\"data_dir\": \"proteinmpnn/inputs/PDB_monomers/pdbs\"|\"data_dir\": \"$JOB_SCRATCH/data\"|" "$TRAINING_CONFIG"
+# Update configuration using python for reliability
+python -c "
+import json
+import os
+
+config_path = '$TRAINING_CONFIG'
+scratch_data = '$JOB_SCRATCH/data'
+
+try:
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    # Update data directory
+    config['data']['data_dir'] = scratch_data
+    
+    # Ensure backbone extraction is ENABLED for dev run to match production
+    config['data']['extract_backbone_features'] = True
+    
+    # Explicitly disable missing backbone allowance to force strict checking
+    if 'model' not in config:
+        config['model'] = {}
+    config['model']['allow_missing_backbone'] = False
+
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
+        
+    print(f'Updated config: data_dir={scratch_data}, backbone_features=True')
+except Exception as e:
+    print(f'Error updating config: {e}')
+    exit(1)
+"
 
 echo "Dev training configuration created at: $TRAINING_CONFIG"
 

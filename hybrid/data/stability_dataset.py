@@ -66,11 +66,38 @@ def _add_proteinmpnn_to_path():
 _proteinmpnn_path_added = _add_proteinmpnn_to_path()
 
 try:
-    from protein_mpnn_utils import parse_PDB_biounits, _S_to_seq, AA_to_N
+    from protein_mpnn_utils import parse_PDB_biounits, _S_to_seq
     PROTEINMPNN_AVAILABLE = True
-except ImportError:
-    PROTEINMPNN_AVAILABLE = False
-    # Warning is now conditional - only shown when utilities are actually needed
+except ImportError as e:
+    # Retry with explicit path addition if not found
+    import sys
+    import os
+    
+    # Store the original error for debugging
+    _original_import_error = str(e)
+    
+    try:
+        # Try to find proteinmpnn in common locations
+        possible_paths = [
+            os.path.join(os.getcwd(), 'proteinmpnn'),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'proteinmpnn')
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path) and path not in sys.path:
+                sys.path.insert(0, path)  # Use insert to prioritize
+                
+        from protein_mpnn_utils import parse_PDB_biounits, _S_to_seq
+        PROTEINMPNN_AVAILABLE = True
+    except ImportError as e2:
+        PROTEINMPNN_AVAILABLE = False
+        # Print detailed error for debugging
+        import sys
+        print(f"DEBUG: Failed to import protein_mpnn_utils", file=sys.stderr)
+        print(f"  Original error: {_original_import_error}", file=sys.stderr)
+        print(f"  Retry error: {str(e2)}", file=sys.stderr)
+        print(f"  sys.path: {sys.path[:5]}", file=sys.stderr)
+        print(f"  cwd: {os.getcwd()}", file=sys.stderr)
 
 # Import MPNN encoder for backbone features extraction
 try:
