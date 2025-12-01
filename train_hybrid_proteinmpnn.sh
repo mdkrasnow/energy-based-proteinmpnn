@@ -383,7 +383,7 @@ def validate_model(checkpoint_path, config_path):
         print(f"Loading checkpoint: {checkpoint_path}")
         
         # Load checkpoint with safe numpy globals for PyTorch 2.6 compatibility
-        torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct, numpy.ndarray])
+        from hybrid.utils import checkpoint_utils
         checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
         
         print("✓ Checkpoint loaded successfully")

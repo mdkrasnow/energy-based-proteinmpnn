@@ -871,7 +871,9 @@ class EnergyModelTrainer:
         return {
             'loss': avg_loss,
             'loss_components': loss_components,
-            'energy_stats': energy_stats
+            'energy_stats': energy_stats,
+            'skipped_batches': skipped_batches,
+            'total_batches': total_batches
         }
     
     def _validate_dataset_composition(self) -> None:
@@ -1018,22 +1020,45 @@ class EnergyModelTrainer:
         total_samples = 0
         energy_stats = {'pos_mean': 0.0, 'neg_mean': 0.0, 'ranking_accuracy': 0.0}
         
+        # Track pos-only samples for fallback metrics
+        pos_only_energies = []
+        pos_only_samples = 0
+        skipped_batches = 0
+        total_batches = 0
+        
         with torch.no_grad():
             progress_bar = tqdm(self.val_loader, desc="Validation")
             
             for batch in progress_bar:
+                total_batches += 1
                 try:
                     # Move batch to device
                     batch = self._move_batch_to_device(batch)
                     
+                    # Check if this batch contains only positive samples for fallback metrics
+                    labels = batch.get('label', [])
+                    if isinstance(labels, torch.Tensor):
+                        pos_count = (labels == 1).sum().item()
+                        neg_count = (labels == 0).sum().item()
+                        is_pos_only = (pos_count > 0 and neg_count == 0)
+                    else:
+                        is_pos_only = False
+                    
                     # Forward pass
                     outputs = self._forward_pass(batch)
                     
-                    # Skip batch if empty (no positive or negative samples)
+                    # If batch was skipped due to imbalance, try to collect pos-only metrics
                     if outputs.get('skip_batch', False):
+                        skipped_batches += 1
+                        
+                        # If it's a pos-only batch, compute fallback metrics
+                        if is_pos_only and len(outputs.get('pos_energies', [])) > 0:
+                            pos_energies = outputs['pos_energies']
+                            pos_only_energies.append(pos_energies)
+                            pos_only_samples += len(pos_energies)
                         continue
                     
-                    # Compute loss
+                    # Compute loss for balanced batches
                     loss = self.loss_fn(
                         pos_energies=outputs['pos_energies'],
                         neg_energies=outputs['neg_energies'],
@@ -1066,9 +1091,37 @@ class EnergyModelTrainer:
         
         # Compute averages - handle case where no valid batches were processed
         if total_samples > 0:
+            # Normal case: we have balanced validation batches
             avg_loss = total_loss / total_samples
             for stat in energy_stats:
                 energy_stats[stat] /= total_samples
+            
+            if skipped_batches > 0:
+                print(f"Validation: {skipped_batches}/{total_batches} batches skipped (imbalanced), "
+                      f"{total_samples} samples processed normally")
+                
+        elif pos_only_samples > 0:
+            # Fallback case: only pos-only batches available, compute alternative metrics
+            all_pos_energies = torch.cat(pos_only_energies, dim=0)
+            
+            # Use a synthetic loss based on positive energy statistics
+            # Higher positive energies indicate potential instability
+            avg_pos_energy = all_pos_energies.mean().item()
+            pos_energy_std = all_pos_energies.std().item()
+            
+            # Synthetic loss: encourage lower positive energies with regularization
+            avg_loss = avg_pos_energy + 0.1 * pos_energy_std
+            
+            energy_stats = {
+                'pos_mean': avg_pos_energy,
+                'neg_mean': 0.0,  # No negative samples available
+                'ranking_accuracy': 0.0  # Cannot compute without negatives
+            }
+            
+            warnings.warn(f"Validation using pos-only fallback metrics: "
+                         f"{pos_only_samples} positive samples, {skipped_batches} batches processed. "
+                         f"Fallback loss: {avg_loss:.6f} (pos_energy_mean + 0.1*std)")
+            
         else:
             # No valid batches processed during validation
             avg_loss = 0.0
@@ -1077,7 +1130,9 @@ class EnergyModelTrainer:
         
         return {
             'loss': avg_loss,
-            'energy_stats': energy_stats
+            'energy_stats': energy_stats,
+            'skipped_batches': skipped_batches,
+            'total_batches': total_batches
         }
     
     def _forward_pass(self, batch: Dict) -> Dict[str, torch.Tensor]:
@@ -1099,9 +1154,44 @@ class EnergyModelTrainer:
         print(f"  Negative samples: {neg_count}")
         
         if pos_mask.sum() == 0 or neg_mask.sum() == 0:
-            print(f"  ERROR: Batch imbalanced - skipping")
+            # Use structured logging if available
+            if hasattr(self, 'logger') and self.logger is not None:
+                self.logger.warning(
+                    f"Skipping batch due to class imbalance "
+                    f"(pos={pos_count}, neg={neg_count})"
+                )
             warnings.warn(f"Batch contains only {'positive' if pos_count > 0 else 'negative'} samples ({pos_count} pos, {neg_count} neg), skipping")
-            # Return empty result to signal skip
+            
+            # For pos-only batches, still compute positive energies for validation fallback metrics
+            if pos_count > 0 and neg_count == 0:
+                # Process positive samples for fallback metrics
+                if 'backbone_features' not in batch:
+                    print(f"  ERROR: backbone_features key missing from batch")
+                    warnings.warn("Backbone features key missing from pos-only batch. This indicates dataset configuration issues.")
+                    return {
+                        'pos_energies': torch.tensor([], device=self.device),
+                        'neg_energies': torch.tensor([], device=self.device),
+                        'negative_types': [],
+                        'skip_batch': True
+                    }
+                
+                pos_backbone = batch['backbone_features'][pos_mask]
+                pos_sequence = batch['sequence'][pos_mask]
+                pos_energies = self.model(
+                    backbone_features=pos_backbone,
+                    sequence=pos_sequence,
+                    mask=batch.get('mask')[pos_mask] if batch.get('mask') is not None else None
+                )
+                print(f"  Computed fallback metrics for {len(pos_energies)} positive samples")
+                
+                return {
+                    'pos_energies': pos_energies,
+                    'neg_energies': torch.tensor([], device=self.device),
+                    'negative_types': [],
+                    'skip_batch': True
+                }
+            
+            # For neg-only or completely empty batches, return empty result
             return {
                 'pos_energies': torch.tensor([], device=self.device),
                 'neg_energies': torch.tensor([], device=self.device),
@@ -1224,6 +1314,17 @@ class EnergyModelTrainer:
             self.writer.add_scalar('Energy/Val_Pos_Mean', val_energy['pos_mean'], epoch)
             self.writer.add_scalar('Energy/Val_Neg_Mean', val_energy['neg_mean'], epoch)
             self.writer.add_scalar('Energy/Val_Ranking_Accuracy', val_energy['ranking_accuracy'], epoch)
+            
+            # Batch skipping statistics
+            train_skipped = train_metrics.get('skipped_batches', 0)
+            train_total = train_metrics.get('total_batches', 1)  # Avoid division by zero
+            val_skipped = val_metrics.get('skipped_batches', 0)
+            val_total = val_metrics.get('total_batches', 1)
+            
+            self.writer.add_scalar('Batch_Stats/Train_Skipped_Batches', train_skipped, epoch)
+            self.writer.add_scalar('Batch_Stats/Val_Skipped_Batches', val_skipped, epoch)
+            self.writer.add_scalar('Batch_Stats/Train_Skip_Rate', train_skipped / train_total, epoch)
+            self.writer.add_scalar('Batch_Stats/Val_Skip_Rate', val_skipped / val_total, epoch)
             
             # Energy distributions histogram
             if epoch % 10 == 0:  # Less frequent for performance

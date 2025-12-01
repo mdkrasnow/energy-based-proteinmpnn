@@ -134,6 +134,11 @@ class StabilityDataset(Dataset):
         lazy_loading: Load structures on-demand vs pre-load (default: True)
         include_coordinates: Include 3D coordinates in output (default: True)
         max_files: Maximum number of structure files to load (default: None = all)
+        extract_backbone_features: Extract backbone features using MPNN encoder (default: True)
+        mpnn_model_path: Path to MPNN model weights (default: None = use default)
+        max_coord_seq_mismatch_ratio: Maximum ratio of coordinate/sequence length mismatch 
+            before rejecting sample (returns None). Ratio calculated as abs(coord_len - seq_len) / max(coord_len, seq_len). 
+            Values between 0.0-1.0. (default: 0.5)
     """
     
     def __init__(
@@ -152,7 +157,8 @@ class StabilityDataset(Dataset):
         include_coordinates: bool = True,
         max_files: Optional[int] = None,
         extract_backbone_features: bool = True,
-        mpnn_model_path: Optional[str] = None
+        mpnn_model_path: Optional[str] = None,
+        max_coord_seq_mismatch_ratio: float = 0.5
     ):
         # Store configuration
         self.data_dir = Path(data_dir)
@@ -169,6 +175,11 @@ class StabilityDataset(Dataset):
         self.max_files = max_files
         self.extract_backbone_features = extract_backbone_features
         self.mpnn_model_path = mpnn_model_path
+        
+        # Validate and store coordinate/sequence mismatch parameters
+        if not 0.0 <= max_coord_seq_mismatch_ratio <= 1.0:
+            raise ValueError(f"max_coord_seq_mismatch_ratio must be a float between 0.0 and 1.0, got {max_coord_seq_mismatch_ratio} ({type(max_coord_seq_mismatch_ratio)})")
+        self.max_coord_seq_mismatch_ratio = max_coord_seq_mismatch_ratio
         
         # Initialize backbone encoder if requested and available
         self.backbone_encoder = None
@@ -1995,34 +2006,114 @@ class StabilityDataset(Dataset):
                 
             coord_len = coords_tensor.shape[0]
             if coord_len != seq_len:
-                # Check for reasonable mismatch bounds
+                # =============================================================================
+                # COORDINATE/SEQUENCE LENGTH MISMATCH HANDLING
+                # =============================================================================
+                # PDB files sometimes have mismatches between sequence length and structural 
+                # coordinates due to:
+                # 1. Missing residues in crystal structures (unresolved loops, termini)
+                # 2. Extra coordinates for ligands, waters, or modified residues 
+                # 3. Sequence annotation inconsistencies
+                # 4. Different chain definitions between sequence and structure
+                #
+                # Our strategy balances structural information preservation with model compatibility:
+                # - Small mismatches (<configurable threshold): Fix via padding/truncation  
+                # - Large mismatches (>threshold): Reject entirely (likely annotation errors)
+                #
+                # This preprocessing ensures the MPNN encoder receives valid inputs while maintaining
+                # reasonable structural integrity for small discrepancies commonly found in PDB files.
+                # ============================================================================= 
+                
+                # Extract sample identification for enhanced logging
+                structure_file = sample.get('structure_file', 'unknown')
+                chain_id = sample.get('chain_id', 'unknown')
+                sample_id = f"{structure_file}:{chain_id}" if chain_id != 'unknown' else str(structure_file)
+                
+                # =============================================================================
+                # VALIDATION: Coordinate order assumptions for end-based padding/truncation
+                # =============================================================================
+                # Our padding/truncation strategy assumes:
+                # 1. Coordinate array order corresponds to sequence order (residue 0 -> N-terminus)
+                # 2. Mismatches are primarily due to missing/extra residues at termini
+                # 3. Core structured regions have coordinate-sequence alignment
+                #
+                # IMPORTANT: If coordinates are not in sequence order, our end-based approach
+                # could disrupt structured regions. However, this is the standard assumption
+                # for PDB files processed through structure parsers, and misalignment in the 
+                # core would typically result in larger mismatch ratios that get rejected.
+                #
+                # NOTE: Future improvements could add sequence-structure alignment validation,
+                # but this would require significant computational overhead for each sample.
+                # =============================================================================
+                
+                # Calculate mismatch severity using relative ratio (not absolute difference)
+                # This accounts for protein size: 10 missing residues is more concerning in a 50-residue 
+                # protein (20% mismatch) than in a 500-residue protein (2% mismatch)
                 mismatch_ratio = abs(coord_len - seq_len) / max(coord_len, seq_len) if max(coord_len, seq_len) > 0 else 1.0
-                if mismatch_ratio > 0.5:  # More than 50% mismatch is suspicious
-                    warnings.warn(f"Large coordinate/sequence length mismatch ({mismatch_ratio:.1%}): coord_len={coord_len}, seq_len={seq_len}. Rejecting sample.")
+                
+                # Reject samples with excessive mismatches (configurable threshold, default 50%)
+                # Large discrepancies typically indicate systematic annotation errors or non-standard
+                # PDB entries that would produce poor quality training data
+                if mismatch_ratio > self.max_coord_seq_mismatch_ratio:
+                    warnings.warn(f"[{sample_id}] Large coordinate/sequence length mismatch ({mismatch_ratio:.1%}): coord_len={coord_len}, seq_len={seq_len}. Rejecting sample.")
                     print(f"  ERROR: Excessive length mismatch - returning None")
                     return None
                 
-                warnings.warn(f"Coordinate/sequence length mismatch: coord_len={coord_len}, seq_len={seq_len}. Attempting to fix...")
+                warnings.warn(f"[{sample_id}] Coordinate/sequence length mismatch: coord_len={coord_len}, seq_len={seq_len}. Attempting to fix...")
                 print(f"  WARNING: Length mismatch (seq_len={seq_len}, coord_len={coord_len}) - attempting fix")
                 
                 if coord_len > seq_len:
-                    # Truncate coordinates to match sequence (lose structural info)
-                    coords_tensor = coords_tensor[:seq_len]
+                    # TRUNCATION STRATEGY: More coordinates than sequence residues
+                    # This commonly occurs when PDB contains extra atoms (ligands, waters, ions) or
+                    # when sequence annotation doesn't include all resolved residues in the structure.
+                    # 
+                    # We truncate from the END rather than beginning/middle because:
+                    # 1. Extra coordinates are typically at C-terminus or non-protein molecules
+                    # 2. N-terminal regions often contain key folding nucleation sites
+                    # 3. MPNN models expect sequential coordinate order to match sequence order
+                    #
+                    # PERFORMANCE IMPACT: Some structural context is lost, but this is preferable to
+                    # coordinate/sequence misalignment which would confuse the encoder entirely.
+                    #
+                    # VALIDATION: This operation truncates from the END by taking coords_tensor[:seq_len]
+                    # which preserves the first seq_len coordinates (assumed to be N-terminal region)
+                    coords_tensor = coords_tensor[:seq_len]  # END-BASED TRUNCATION
                     print(f"  Fixed by truncating coordinates to {seq_len} residues")
-                    warnings.warn(f"Truncated {coord_len - seq_len} coordinates - structural information lost")
+                    warnings.warn(f"[{sample_id}] Truncated {coord_len - seq_len} coordinates - structural information lost")
                 elif coord_len < seq_len:
-                    # Pad with last known coordinate to avoid (0,0,0) artifacts
+                    # PADDING STRATEGY: Fewer coordinates than sequence residues  
+                    # This occurs when crystal structures have missing residues (unresolved loops, 
+                    # flexible regions, or terminal residues) but the full sequence is annotated.
+                    #
+                    # DESIGN CHOICES:
+                    # 1. REPEAT LAST COORDINATE (chosen) vs alternatives:
+                    #    - Zero coordinates: Would create artificial (0,0,0) positions that don't exist 
+                    #      in nature and could mislead the model about protein geometry
+                    #    - Random coordinates: Would introduce noise and inconsistency 
+                    #    - Interpolation: Too complex and assumes structural knowledge we don't have
+                    #
+                    # 2. PAD AT END (chosen) vs beginning: 
+                    #    - Missing residues are more commonly at flexible termini than in structured core
+                    #    - Preserves the structural integrity of the resolved portion
+                    #    - MPNN models can partially handle duplicate coordinates better than misaligned ones
+                    #
+                    # PERFORMANCE IMPACT: Padding degrades feature quality for missing regions but
+                    # allows the model to still extract useful information from the resolved structure.
+                    # The warning alerts users that some features may be compromised.
                     padding_size = seq_len - coord_len
                     if coord_len > 0:
-                        # Repeat last coordinate for padding
+                        # Repeat last known coordinate (typically C-terminal residue) 
                         last_coord = coords_tensor[-1:].expand(padding_size, -1, -1)
-                        coords_tensor = torch.cat([coords_tensor, last_coord], dim=0)
+                        # VALIDATION: This operation pads at the END using torch.cat([existing, padding], dim=0)
+                        # which appends padding after all existing coordinates (assumed C-terminal extension)
+                        coords_tensor = torch.cat([coords_tensor, last_coord], dim=0)  # END-BASED PADDING
                         print(f"  Fixed by padding {padding_size} coordinates with last known position")
                     else:
-                        # No coordinates to work with - return None
+                        # Pathological case: No coordinates available at all
+                        # This indicates severely corrupted or empty structure data
                         print(f"  ERROR: No coordinates available for padding - returning None")
                         return None
-                    warnings.warn(f"Padded {padding_size} coordinates - features may be degraded")
+                    warnings.warn(f"[{sample_id}] Padded {padding_size} coordinates - features may be degraded")
                     
                 print(f"  Final coordinate shape: {coords_tensor.shape}")
             

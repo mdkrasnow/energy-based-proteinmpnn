@@ -394,7 +394,7 @@ def basic_model_validation(model_dir):
     print(f"Found {len(model_files)} model files")
     
     # Test loading each model with safe numpy globals for PyTorch 2.6 compatibility
-    torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct, numpy.ndarray])
+    from hybrid.utils import checkpoint_utils
     for model_file in model_files:
         try:
             print(f"Testing {model_file.name}...")

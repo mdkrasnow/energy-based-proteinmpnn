@@ -185,8 +185,9 @@ class ContrastiveLoss(nn.Module):
         if negative_types is not None:
             weights = torch.ones_like(neg_energies)
             for i, neg_type in enumerate(negative_types):
-                if neg_type in self.negative_weights:
-                    weights[i] = self.negative_weights[neg_type]
+                mapped_type = self._map_generation_method_to_negative_type(neg_type)
+                if mapped_type in self.negative_weights:
+                    weights[i] = self.negative_weights[mapped_type]
             
             # Broadcast weights to match margin_losses shape
             weights = weights.unsqueeze(0)  # [1, B_neg]
@@ -236,8 +237,9 @@ class ContrastiveLoss(nn.Module):
         if negative_types is not None:
             for i, neg_type in enumerate(negative_types):
                 neg_idx = len(pos_energies) + i
-                if neg_type in self.negative_weights:
-                    weights[neg_idx] = self.negative_weights[neg_type]
+                mapped_type = self._map_generation_method_to_negative_type(neg_type)
+                if mapped_type in self.negative_weights:
+                    weights[neg_idx] = self.negative_weights[mapped_type]
         
         # Compute weighted cross-entropy loss
         loss = F.cross_entropy(logits, all_labels.long(), weight=None, reduction='none')
@@ -358,6 +360,43 @@ class ContrastiveLoss(nn.Module):
         if self.eps <= 0:
             raise ValueError(f"eps must be positive, got {self.eps}")
     
+    def _map_generation_method_to_negative_type(self, generation_method: str) -> str:
+        """
+        Map generation methods used in datasets to standard negative types.
+        
+        Args:
+            generation_method: Generation method from dataset (e.g., 'random_problematic')
+        
+        Returns:
+            Standard negative type compatible with NegativeType enum
+        """
+        if generation_method is None:
+            return NegativeType.RANDOM.value  # Safe fallback for None inputs
+        
+        # Case-insensitive lookup
+        normalized_method = generation_method.lower()
+        
+        method_mapping = {
+            # Random-based generation methods
+            'random': NegativeType.RANDOM.value,
+            'random_problematic': NegativeType.RANDOM.value,
+            
+            # Mutation-based generation methods
+            'mutated': NegativeType.MUTATED.value,
+            'mutations': NegativeType.MUTATED.value,
+            'structure_aware_mutations': NegativeType.MUTATED.value,
+            
+            # Failed design methods
+            'failed_design': NegativeType.FAILED_DESIGN.value,
+            'failed_designs': NegativeType.FAILED_DESIGN.value,
+            
+            # Hard negative methods
+            'hard_negative': NegativeType.HARD_NEGATIVE.value,
+            'hard_negatives': NegativeType.HARD_NEGATIVE.value,
+        }
+        
+        return method_mapping.get(normalized_method, generation_method)
+
     def _validate_inputs(
         self,
         pos_energies: torch.Tensor,
@@ -419,10 +458,11 @@ class ContrastiveLoss(nn.Module):
             if len(negative_types) != len(neg_energies):
                 raise ValueError("negative_types length must match neg_energies")
             
-            # Check for valid negative types
+            # Check for valid negative types using mapping
             valid_types = set(neg_type.value for neg_type in NegativeType)
             for neg_type in negative_types:
-                if neg_type not in valid_types and neg_type not in self.negative_weights:
+                mapped_type = self._map_generation_method_to_negative_type(neg_type)
+                if mapped_type not in valid_types and mapped_type not in self.negative_weights:
                     warnings.warn(f"Unknown negative type: {neg_type}")
     
     def get_last_losses(self) -> Dict[str, float]:
