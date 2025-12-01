@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-01T00:00:00Z",
+  "lint": {
+    "errors": [],
+    "warnings": [],
+    "error_count": 0,
+    "warning_count": 0,
+    "clean": true
+  },
+  "python_syntax": {
+    "errors": [],
+    "error_count": 0,
+    "clean": true
+  },
+  "json_validation": {
+    "errors": [],
+    "error_count": 0,
+    "clean": true
+  },
+  "baseline_has_errors": false
+}
+EOF < /dev/null

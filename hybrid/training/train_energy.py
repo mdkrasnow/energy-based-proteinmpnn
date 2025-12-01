@@ -349,10 +349,30 @@ class EnergyModelTrainer:
             freeze_layers=mpnn_config.get('freeze_layers', True)
         ).to(self.device)
         
+        # Validate configuration matches actual encoder output dimension
+        config_dim = mpnn_config.get('hidden_dim')
+        actual_dim = encoder.get_embedding_dim()
+        
+        if config_dim is not None and config_dim != actual_dim:
+            warning_msg = (
+                f"Configuration dimension mismatch detected and corrected:\n"
+                f"  Config specifies: hidden_dim={config_dim}\n"
+                f"  Encoder outputs: {actual_dim}\n"
+                f"  Using encoder's actual dimension: {actual_dim}\n"
+                f"  Fix: Update config file to 'hidden_dim': {actual_dim} "
+                f"or remove parameter to use default\n"
+                f"  Note: ProteinMPNN architecture is fixed by pre-trained checkpoint"
+            )
+            warnings.warn(warning_msg)
+            
+            # Persist warning to experiment logs for reproducibility
+            if hasattr(self, 'logger') and self.logger is not None:
+                self.logger.warning(warning_msg)
+        
         # Initialize energy head
         energy_config = model_config['energy_head']
         energy_head = EnergyHead(
-            backbone_dim=mpnn_config.get('hidden_dim', 128),
+            backbone_dim=actual_dim,  # Use cached encoder dimension from validation above
             seq_dim=20,  # Standard amino acids
             hidden_dim=energy_config.get('hidden_dim', 512),
             num_layers=energy_config.get('num_layers', 3),
