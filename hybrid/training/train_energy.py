@@ -1063,10 +1063,16 @@ class EnergyModelTrainer:
                     warnings.warn(f"Error in validation batch: {e}")
                     continue
         
-        # Compute averages
-        avg_loss = total_loss / total_samples
-        for stat in energy_stats:
-            energy_stats[stat] /= total_samples
+        # Compute averages - handle case where no valid batches were processed
+        if total_samples > 0:
+            avg_loss = total_loss / total_samples
+            for stat in energy_stats:
+                energy_stats[stat] /= total_samples
+        else:
+            # No valid batches processed during validation
+            avg_loss = 0.0
+            energy_stats = {'pos_mean': 0.0, 'neg_mean': 0.0, 'ranking_accuracy': 0.0}
+            warnings.warn("No valid validation batches processed - all batches were skipped")
         
         return {
             'loss': avg_loss,
