@@ -372,6 +372,8 @@ if [ $TRAIN_EXIT -eq 0 ]; then
         
         timeout 30 python -c "
 import torch
+import numpy.core.multiarray
+torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct])
 checkpoint = torch.load('$CHECKPOINT_FILE', map_location='cpu', weights_only=True)
 print('✓ Checkpoint loads successfully')
 print(f'Epoch: {checkpoint.get(\"epoch\", \"unknown\")}')

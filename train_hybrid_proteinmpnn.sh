@@ -368,6 +368,7 @@ if [ $TRAIN_EXIT -eq 0 ]; then
 import torch
 import json
 import sys
+import numpy.core.multiarray
 from pathlib import Path
 
 def validate_model(checkpoint_path, config_path):
@@ -380,7 +381,8 @@ def validate_model(checkpoint_path, config_path):
         
         print(f"Loading checkpoint: {checkpoint_path}")
         
-        # Load checkpoint
+        # Load checkpoint with safe numpy globals for PyTorch 2.6 compatibility
+        torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct])
         checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
         
         print("✓ Checkpoint loaded successfully")
