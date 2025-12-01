@@ -66,6 +66,7 @@ from models.mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_enco
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from data.stability_dataset import StabilityDataset
+from utils import checkpoint_utils  # PyTorch 2.6 safe_globals registration
 
 
 class EnergyRankingEvaluator:

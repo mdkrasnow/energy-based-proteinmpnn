@@ -14,6 +14,10 @@ import sys
 from pathlib import Path
 from typing import Optional, Dict, Any
 
+# Import checkpoint utilities for PyTorch 2.6 safe_globals registration
+sys.path.append(str(Path(__file__).parent.parent))  # Add hybrid to path for relative import
+from utils import checkpoint_utils
+
 # Add proteinmpnn to path with robust absolute path resolution
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent.parent  # Go up from models/ to hybrid/ to project root/

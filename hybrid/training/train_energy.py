@@ -55,12 +55,13 @@ current_dir = Path(__file__).parent
 project_root = current_dir.parent
 sys.path.append(str(project_root))
 
-# Import project modules
+# Import project modules  
 from models.mpnn_encoder import ProteinMPNNBackboneEncoder
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from data.stability_dataset import StabilityDataset
 from training.losses import ContrastiveLoss, NegativeType
+from utils import checkpoint_utils  # PyTorch 2.6 safe_globals registration
 
 
 class BalancedBatchSampler(Sampler):

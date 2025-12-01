@@ -65,6 +65,7 @@ from models.mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_enco
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from inference.ired_optimizer import IREDSequenceOptimizer, OptimizationConfig, OptimizationResult
+from utils import checkpoint_utils  # PyTorch 2.6 safe_globals registration
 
 # Import ProteinMPNN utilities for PDB parsing and decoder initialization
 sys.path.append(os.path.join(str(project_root), '..', 'proteinmpnn'))
