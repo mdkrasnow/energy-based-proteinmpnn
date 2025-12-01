@@ -532,17 +532,75 @@ class PerformanceAnalyzer:
             return problems
         
         elif benchmark_type == 'literature_targets':
-            # Placeholder for literature targets (would require external data)
-            self._log("Literature targets not implemented - using mock data")
-            return [
-                {
+            # Use real PDB structures as literature targets
+            self._log("Generating literature targets from real PDB structures")
+            problems = []
+            
+            # Get real PDB structures from the repository
+            try:
+                import os
+                from pathlib import Path
+                
+                # Find PDB files in the repository structure
+                current_dir = Path(__file__).parent
+                repo_root = current_dir.parent.parent
+                pdb_inputs_dir = repo_root / 'proteinmpnn' / 'inputs'
+                
+                if pdb_inputs_dir.exists():
+                    pdb_files = list(pdb_inputs_dir.glob("**/*.pdb"))
+                    
+                    for i, pdb_file in enumerate(pdb_files[:max_size]):
+                        filename = pdb_file.stem
+                        category = pdb_file.parent.name
+                        
+                        # Determine properties based on PDB structure type
+                        if 'monomers' in category.lower():
+                            difficulty = 'easy'
+                            length_estimate = 80
+                        elif 'complexes' in category.lower():
+                            difficulty = 'medium'
+                            length_estimate = 120
+                        else:  # homooligomers
+                            difficulty = 'hard'
+                            length_estimate = 150
+                        
+                        problem = {
+                            'type': 'literature_target',
+                            'source': f'PDB_{filename}',
+                            'pdb_file': str(pdb_file),
+                            'category': category,
+                            'difficulty': difficulty,
+                            'sequence_length': length_estimate,
+                            'target_properties': {
+                                'experimental_validation': True,
+                                'structural_validation': True,
+                                'real_structure': True
+                            }
+                        }
+                        problems.append(problem)
+                    
+                    self._log(f"Generated {len(problems)} literature targets from real PDB structures")
+                else:
+                    self._log("PDB inputs directory not found, using minimal placeholder")
+                    problems = [{
+                        'type': 'literature_target',
+                        'source': 'no_real_data_available',
+                        'difficulty': 'medium',
+                        'sequence_length': 120,
+                        'target_properties': {'note': 'PDB structures not accessible'}
+                    }]
+                    
+            except Exception as e:
+                self._log(f"Error accessing real PDB structures: {e}")
+                problems = [{
                     'type': 'literature_target',
-                    'source': 'mock_paper_1',
-                    'difficulty': 'medium',
+                    'source': 'error_accessing_data',
+                    'difficulty': 'medium', 
                     'sequence_length': 120,
-                    'target_properties': {'experimental_validation': True}
-                }
-            ]
+                    'target_properties': {'note': 'Error accessing PDB data'}
+                }]
+            
+            return problems
         
         else:
             self._log(f"Unknown benchmark type: {benchmark_type}")

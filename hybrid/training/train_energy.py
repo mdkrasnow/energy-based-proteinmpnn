@@ -1107,7 +1107,10 @@ class EnergyModelTrainer:
             # Use a synthetic loss based on positive energy statistics
             # Higher positive energies indicate potential instability
             avg_pos_energy = all_pos_energies.mean().item()
-            pos_energy_std = all_pos_energies.std().item()
+            if all_pos_energies.numel() < 2:
+                pos_energy_std = 0.0
+            else:
+                pos_energy_std = all_pos_energies.std(unbiased=False).item()
             
             # Synthetic loss: encourage lower positive energies with regularization
             avg_loss = avg_pos_energy + 0.1 * pos_energy_std

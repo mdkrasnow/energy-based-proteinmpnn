@@ -2234,65 +2234,40 @@ class EnergyModelEvaluator:
         print("="*60)
 
 
-def create_mock_evaluation_dataset(num_samples: int = 100) -> StabilityDataset:
+def create_evaluation_dataset_from_pdbs(pdb_dir: str, num_samples: int = 100) -> StabilityDataset:
     """
-    Create a synthetic dataset for evaluation testing.
+    Create evaluation dataset from real PDB structures.
     
     Args:
-        num_samples: Number of samples to generate
+        pdb_dir: Directory containing real PDB files
+        num_samples: Maximum number of samples to use
         
     Returns:
-        Mock StabilityDataset for testing
+        StabilityDataset using real PDB structures
     """
-    print(f"Creating mock evaluation dataset with {num_samples} samples...")
+    print(f"Creating evaluation dataset from real PDB structures in: {pdb_dir}")
     
-    # This would normally use real PDB data
-    # For now, create a mock implementation that matches the dataset interface
-    class MockEvaluationDataset:
-        def __init__(self, num_samples):
-            self.num_samples = num_samples
-            self.amino_acids = "ACDEFGHIKLMNPQRSTVWY"
-            torch.manual_seed(42)  # Reproducible
-            
-        def __len__(self):
-            return self.num_samples
-        
-        def __getitem__(self, idx):
-            # Create realistic mock data
-            length = torch.randint(30, 100, (1,)).item()
-            
-            # Generate backbone features (normally from ProteinMPNN encoder)
-            backbone_features = torch.randn(length, 128)
-            
-            # Generate sequence probabilities
-            if idx % 2 == 0:  # Positive example (native sequence)
-                # More concentrated probability distribution for native
-                logits = torch.randn(length, 20) * 2.0
-                sequence_probs = F.softmax(logits, dim=-1)
-                label = 1
-            else:  # Negative example (random/mutated)
-                # More uniform distribution for random sequences
-                logits = torch.randn(length, 20) * 0.5
-                sequence_probs = F.softmax(logits, dim=-1)
-                label = 0
-            
-            # Create mask
-            mask = torch.ones(length)
-            
-            # Create amino acid sequence for property analysis
-            seq_indices = sequence_probs.argmax(dim=-1)
-            sequence = ''.join(self.amino_acids[i] for i in seq_indices)
-            
-            return {
-                'backbone_features': backbone_features,
-                'sequence_probs': sequence_probs,
-                'mask': mask,
-                'label': label,
-                'sequence': sequence,
-                'length': length
-            }
+    # Use the actual StabilityDataset with real PDB files
+    try:
+        from ..data.stability_dataset import StabilityDataset
+    except ImportError:
+        # Fallback for direct execution
+        import sys
+        from pathlib import Path
+        sys.path.append(str(Path(__file__).parent.parent))
+        from data.stability_dataset import StabilityDataset
     
-    return MockEvaluationDataset(num_samples)
+    # Create dataset using real PDB structures
+    dataset = StabilityDataset(
+        data_dir=pdb_dir,
+        positive_ratio=0.5,  # Balanced positive/negative examples
+        max_files=num_samples,  # Limit number of structures if needed
+        min_sequence_length=20,
+        max_sequence_length=500
+    )
+    
+    print(f"✓ Created evaluation dataset with {len(dataset)} samples from real PDB structures")
+    return dataset
 
 
 def main():
@@ -2358,11 +2333,6 @@ def main():
         action="store_true",
         help="Disable plot generation"
     )
-    parser.add_argument(
-        "--use_mock_data", 
-        action="store_true",
-        help="Use synthetic data for testing"
-    )
     
     args = parser.parse_args()
     
@@ -2376,18 +2346,14 @@ def main():
             output_dir=args.output_dir
         )
         
-        # Create test dataset
-        if args.use_mock_data:
-            test_dataset = create_mock_evaluation_dataset(args.num_ranking_samples)
-        else:
-            if args.test_data_dir is None:
-                raise ValueError("Must provide --test_data_dir or use --use_mock_data")
-            
-            test_dataset = StabilityDataset(
-                data_dir=args.test_data_dir,
-                positive_ratio=0.5,
-                max_files=100  # Limit for evaluation
-            )
+        # Create test dataset from real PDB structures
+        if args.test_data_dir is None:
+            raise ValueError("Must provide --test_data_dir for evaluation")
+        
+        test_dataset = create_evaluation_dataset_from_pdbs(
+            pdb_dir=args.test_data_dir,
+            num_samples=args.num_ranking_samples
+        )
         
         # Run comprehensive evaluation
         results = evaluator.evaluate_comprehensive(

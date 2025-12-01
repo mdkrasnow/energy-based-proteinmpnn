@@ -4,7 +4,7 @@
 #SBATCH --account=ydu_lab                    # Your lab account
 #SBATCH --gres=gpu:1                         # 1 GPU
 #SBATCH -c 16                                # 16 CPU cores
-#SBATCH -t 03-00:00:00                       # 3 days for full training
+#SBATCH -t 01-12:00:00                       # 3 days for full training
 #SBATCH --mem=64G                            # 64 GB RAM
 #SBATCH -o train_hybrid_proteinmpnn_%j.out   # STDOUT file
 #SBATCH -e train_hybrid_proteinmpnn_%j.err   # STDERR file
@@ -134,100 +134,76 @@ mkdir -p "$JOB_SCRATCH/checkpoints"
 mkdir -p "$JOB_SCRATCH/logs"
 mkdir -p "$JOB_SCRATCH/results"
 
-# Check if training data exists, generate mock data if needed
-echo "Checking for training data..."
-if [ -z "$(find "$JOB_SCRATCH/data" -name "*.pdb" -type f 2>/dev/null | head -1)" ]; then
-    echo "No PDB files found in data directory. Generating mock training data..."
-    
-    # Function to create a minimal valid PDB file (same as dev script)
-    create_mock_pdb() {
-        local filename="$1"
-        local sequence="$2" 
-        local chain_id="${3:-A}"
-        
-        cat > "$filename" << EOF
-HEADER    MOCK PROTEIN                            01-JAN-25   MOCK            
-TITLE     MOCK PROTEIN FOR TRAINING                                           
-COMPND    MOL_ID: 1;                                                          
-COMPND   2 MOLECULE: MOCK PROTEIN;                                           
-COMPND   3 CHAIN: $chain_id;                                                    
-SOURCE    MOL_ID: 1;                                                          
-SOURCE   2 SYNTHETIC: YES                                                     
-KEYWDS    MOCK, TRAINING, PROTEINMPNN                                         
-EOF
-
-        # Generate ATOM records for each amino acid
-        local atom_num=1
-        local res_num=1
-        
-        for ((i=0; i<${#sequence}; i++)); do
-            local aa="${sequence:$i:1}"
-            
-            # Simple coordinates using integer arithmetic  
-            local x=$((res_num * 4))
-            local y=$((res_num % 10 * 2))
-            local z=$((res_num % 5 * 2))
-            
-            # Add backbone atoms (N, CA, C, O)
-            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           N  \n" \
-                   $atom_num "N" "$aa" "$chain_id" $res_num $x.000 $y.000 $z.000 >> "$filename"
-            ((atom_num++))
-            
-            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
-                   $atom_num "CA" "$aa" "$chain_id" $res_num $((x+1)).000 $y.000 $z.000 >> "$filename"
-            ((atom_num++))
-            
-            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           C  \n" \
-                   $atom_num "C" "$aa" "$chain_id" $res_num $((x+2)).000 $y.000 $z.000 >> "$filename"
-            ((atom_num++))
-            
-            printf "ATOM  %5d  %-3s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00           O  \n" \
-                   $atom_num "O" "$aa" "$chain_id" $res_num $((x+3)).000 $y.000 $z.000 >> "$filename"
-            ((atom_num++))
-            
-            ((res_num++))
-        done
-        
-        echo "END" >> "$filename"
-    }
-    
-    # Create a larger set of mock proteins for full training
-    echo "Generating mock protein structures for training..."
-    
-    # Generate proteins of various lengths and compositions
-    for i in $(seq 1 50); do
-        # Generate random-ish sequences of varying lengths
-        case $((i % 8)) in
-            0) seq="MKLLILVLVLALVLLTLWFHSTDWYPFTGMHFILFKSPPESRLSARERLSRLLLSLLALRLLLMKQHKAMIVALIVICITAVVAALVTRKDLCEVHIRTGQTEVAVF" ;;
-            1) seq="MGLWSKIKGLVQPTRLLLEYLEEKYEEHLYERDEGDKWRNKKFELGLEFPNLPYYIDGDVKLQRANTEENELHFHKRHPDASVNFLPILVNLKELNVCLQKQVILAV" ;;  
-            2) seq="MKQHKAMIVALIVICITAVVAALVTRKDLCEVHIRTGQTEVAVFKFLFNIKKLTDVFGDDHFFHLQHLRDHVNPNKADRERRQQALSDSDGDAANPALRKAVDLL" ;;
-            3) seq="MKKLILAILVVLVLLTLVFHSTGYPFTGVHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDWKQDHPEKKARKLLILVLALVLLLTLVFHSTGYPFTGVHF" ;;
-            4) seq="MGSSHHHHHHSSGLVPRGSHMKLLILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARERLSKLRKQAMIVALIVICITAVVAALVTRKDLCEVHIRTG" ;;
-            5) seq="MTSKVLILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPPESRLSARERLSRLLLSLLALRLLLFTPKHQSRLLSDPKAIVDDLLDKLVGHFRSDHQKLLSDPN" ;;
-            6) seq="MTTLKKVILVLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDWMRRGGQEDHPEKKARKQHKAMIVALIVICIT" ;;
-            7) seq="MVLLVLALVLLTLVFHSTDWYPFTGMHFILFKSPAESRLSARERLSRLLVSLLALRLLFHHSTDWKQDHPEKKARKQHKAMIVALIVICITAVVAALVTRKDLC" ;;
-        esac
-        
-        # Truncate or extend sequence to create variety in lengths
-        if [ $((i % 3)) -eq 0 ]; then
-            seq=${seq:0:40}  # Shorter proteins
-        elif [ $((i % 5)) -eq 0 ]; then
-            seq=${seq:0:150}  # Longer proteins  
-        else
-            seq=${seq:0:80}   # Medium proteins
-        fi
-        
-        create_mock_pdb "$JOB_SCRATCH/data/mock_protein_$(printf "%03d" $i).pdb" "$seq"
-    done
-    
-    echo "Generated 50 mock PDB files for training"
-    
-else
-    echo "Found existing PDB files in data directory:"
-    find "$JOB_SCRATCH/data" -name "*.pdb" -type f | head -10
-    pdb_count=$(find "$JOB_SCRATCH/data" -name "*.pdb" -type f | wc -l)
-    echo "Total PDB files: $pdb_count"
+# Use real PDB files from repository for training
+echo "Setting up training data from real PDB structures..."
+# Discover and organize real PDB files from the repository
+if [ -z "$REPO_DIR" ]; then
+    echo "ERROR: REPO_DIR variable not set"
+    exit 1
 fi
+
+REPO_PDB_INPUTS_DIR="$REPO_DIR/proteinmpnn/inputs"
+
+echo "Searching for real PDB files in: $REPO_PDB_INPUTS_DIR"
+
+# Find all PDB files in the repository
+if [ ! -d "$REPO_PDB_INPUTS_DIR" ]; then
+    echo "ERROR: ProteinMPNN inputs directory not found: $REPO_PDB_INPUTS_DIR"
+    echo "Repository structure may be incomplete"
+    exit 1
+fi
+
+# Discover all available PDB files
+PDB_FILES=($(find "$REPO_PDB_INPUTS_DIR" -name "*.pdb" -type f | sort))
+
+if [ ${#PDB_FILES[@]} -eq 0 ]; then
+    echo "ERROR: No PDB files found in repository inputs directory!"
+    echo "Expected to find PDB files in subdirectories of: $REPO_PDB_INPUTS_DIR"
+    echo "Repository may be incomplete or corrupted"
+    exit 1
+fi
+
+echo "Found ${#PDB_FILES[@]} real PDB files in repository:"
+for pdb_file in "${PDB_FILES[@]}"; do
+    echo "  - $(basename "$pdb_file") ($(basename "$(dirname "$pdb_file")"))"
+done
+
+# Copy all PDB files to training data directory
+# (Training dataset will handle train/val/test split internally via config)
+echo ""
+echo "Copying real PDB files for training..."
+
+copied_count=0
+
+for pdb_file in "${PDB_FILES[@]}"; do
+    filename=$(basename "$pdb_file")
+    dest_file="$JOB_SCRATCH/data/$filename"
+    
+    # Copy with error checking
+    if cp "$pdb_file" "$dest_file"; then
+        echo "  ✓ Copied: $filename"
+        ((copied_count++))
+    else
+        echo "  ✗ ERROR: Failed to copy $filename"
+        exit 1
+    fi
+done
+
+echo ""
+echo "Data preparation summary:"
+echo "  Real PDB files copied: $copied_count"
+echo "  Data directory: $JOB_SCRATCH/data"
+
+# Verify we have files for training  
+if [ $copied_count -eq 0 ]; then
+    echo "ERROR: No PDB files successfully copied!"
+    exit 1
+fi
+
+echo ""
+echo "✓ Real PDB training data prepared successfully"
+echo "  Data directory: $JOB_SCRATCH/data"
+echo "  All files are authentic protein structures from the repository"
 
 # Download ProteinMPNN pre-trained weights if not present
 PROTEINMPNN_WEIGHTS_DIR="$REPO_DIR/proteinmpnn/vanilla_model_weights"
