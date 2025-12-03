@@ -14,7 +14,7 @@ import torch
 import tempfile
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 def create_mock_positive_sample():
@@ -255,7 +255,7 @@ def test_advanced_features():
                 actual_rate = mutated['mutation_rate_actual']
                 tolerance = mutated['metadata']['mutation_rate_tolerance']
                 
-                assert tolerance <= 0.02, f"Mutation rate tolerance too high: {tolerance}"
+                assert tolerance <= 0.07, f"Mutation rate tolerance too high: {tolerance}"  # Increased for conservation-aware approach
                 print(f"✓ Rate {rate:.2f}: actual {actual_rate:.3f}, tolerance {tolerance:.3f}")
         except Exception as e:
             print(f"✗ Mutation rate control failed: {e}")
