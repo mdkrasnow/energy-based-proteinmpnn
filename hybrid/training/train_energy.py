@@ -1760,6 +1760,12 @@ class EnergyPredictionModel(nn.Module):
         print(f"DEBUG train_energy: sequence_probs shape={sequence_probs.shape}, min={sequence_probs.min().item():.6f}, max={sequence_probs.max().item():.6f}")
         print(f"DEBUG train_energy: sequence_probs NaN: {torch.isnan(sequence_probs).any().item()}, Inf: {torch.isinf(sequence_probs).any().item()}")
 
+        # DEBUG: Check tensor shapes before energy head call
+        print(f"DEBUG train_energy: Before energy_head call:")
+        print(f"  encoded_backbone shape: {encoded_backbone.shape}")
+        print(f"  sequence_probs shape: {sequence_probs.shape}")
+        print(f"  mask shape: {mask.shape if mask is not None else None}")
+        
         # Predict energy
         energies = self.energy_head(encoded_backbone, sequence_probs, mask)
 

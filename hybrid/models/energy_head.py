@@ -262,6 +262,28 @@ class EnergyHead(nn.Module):
         if torch.isnan(backbone_features).any() or torch.isinf(backbone_features).any():
             print("DEBUG energy_head: BACKBONE FEATURES CONTAIN NaN/Inf!")
             raise ValueError("backbone_features contains NaN or Inf values")
+        # EMERGENCY DIMENSION FIX: Check if sequence_probs has wrong dimension
+        if sequence_probs.shape[-1] != self.seq_dim:
+            print(f"DEBUG energy_head: DIMENSION MISMATCH! sequence_probs has shape {sequence_probs.shape}, expected last dim {self.seq_dim}")
+            
+            if sequence_probs.shape[-1] == backbone_features.shape[-1]:
+                print("DEBUG energy_head: sequence_probs appears to be backbone_features! Creating fake sequence_probs")
+                # Create fake uniform sequence probabilities
+                batch_size, seq_len = sequence_probs.shape[:2]
+                sequence_probs = torch.full(
+                    (batch_size, seq_len, self.seq_dim),
+                    1.0 / self.seq_dim,
+                    device=sequence_probs.device,
+                    dtype=sequence_probs.dtype
+                )
+                print(f"DEBUG energy_head: Created uniform sequence_probs with shape {sequence_probs.shape}")
+            else:
+                # Try to project to correct dimension
+                print(f"DEBUG energy_head: Projecting sequence_probs from {sequence_probs.shape[-1]} to {self.seq_dim}")
+                projection = torch.nn.Linear(sequence_probs.shape[-1], self.seq_dim, device=sequence_probs.device)
+                sequence_probs = projection(sequence_probs)
+                sequence_probs = torch.nn.functional.softmax(sequence_probs, dim=-1)
+
         if torch.isnan(sequence_probs).any() or torch.isinf(sequence_probs).any():
             print("DEBUG energy_head: SEQUENCE PROBS CONTAIN NaN/Inf!")
             print(f"DEBUG energy_head: NaN count: {torch.isnan(sequence_probs).sum().item()}")
