@@ -258,6 +258,8 @@ class EnergyHead(nn.Module):
         
         print(f"DEBUG energy_head: sequence_probs shape={sequence_probs.shape}, min={sequence_probs.min().item():.6f}, max={sequence_probs.max().item():.6f}")
         print(f"DEBUG energy_head: sequence_probs NaN: {torch.isnan(sequence_probs).any().item()}, Inf: {torch.isinf(sequence_probs).any().item()}")
+        print(f"DEBUG energy_head: Expected seq_dim={self.seq_dim}, actual last_dim={sequence_probs.shape[-1]}")
+        print(f"DEBUG energy_head: Dimension check: {sequence_probs.shape[-1]} != {self.seq_dim} = {sequence_probs.shape[-1] != self.seq_dim}")
         
         if torch.isnan(backbone_features).any() or torch.isinf(backbone_features).any():
             print("DEBUG energy_head: BACKBONE FEATURES CONTAIN NaN/Inf!")
