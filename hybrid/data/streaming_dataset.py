@@ -1299,9 +1299,13 @@ class StreamingProteinDataset(IterableDataset):
                 
             # Flexible tensor validation (SCI-004 fix)
             try:
-                # Validate coordinates
+                # Validate coordinates - handle batch dimension
+                if X.dim() == 4 and X.size(0) == 1:
+                    # Remove batch dimension: [1, L, 4, 3] -> [L, 4, 3]
+                    X = X.squeeze(0)
+                
                 if X.dim() != 3 or X.size(-1) != 3:
-                    self.logger.error(f"Invalid coordinate tensor shape for {pdb_path}: expected [B, L, 4, 3] or [L, 4, 3], got {X.shape}")
+                    self.logger.error(f"Invalid coordinate tensor shape for {pdb_path}: expected [L, 4, 3], got {X.shape}")
                     return None
                     
                 # Validate that we have 4 backbone atoms per residue (or allow flexibility)

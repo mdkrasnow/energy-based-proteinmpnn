@@ -20,7 +20,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+
+# Optional tensorboard import
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    TENSORBOARD_AVAILABLE = True
+except ImportError:
+    SummaryWriter = None
+    TENSORBOARD_AVAILABLE = False
+    print("Warning: tensorboard not available, logging to files only")
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent.parent
@@ -192,8 +200,7 @@ class StreamingTrainer:
                 self.optimizer,
                 mode='min',
                 factor=scheduler_config['factor'],
-                patience=scheduler_config['patience'],
-                verbose=True
+                patience=scheduler_config['patience']
             )
         else:
             self.scheduler = None
@@ -208,7 +215,10 @@ class StreamingTrainer:
                 self.config['monitoring']['tensorboard']['log_dir']
             ))
             log_dir.mkdir(parents=True, exist_ok=True)
-            self.writer = SummaryWriter(log_dir=log_dir)
+            if TENSORBOARD_AVAILABLE:
+                self.writer = SummaryWriter(log_dir=log_dir)
+            else:
+                self.writer = None
             logger.info(f"TensorBoard logging to: {log_dir}")
         else:
             self.writer = None

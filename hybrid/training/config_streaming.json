@@ -43,7 +43,7 @@
                 "sequence_length_max": 500
             },
             "weight": 0.7,
-            "enabled": false,
+            "enabled": true,
             "api_key": null,
             "rate_limit_per_second": 20
         }
