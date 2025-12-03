@@ -85,21 +85,34 @@ class ContinuousSequenceRepr(nn.Module):
         # Get current temperature on same device as logits
         temperature = self.get_temperature(landscape_idx).to(logits.device)
         
-        # Numerical stability: clamp logits to prevent overflow
-        logits = torch.clamp(logits, min=-10.0, max=10.0)
+        # Enhanced numerical stability safeguards
+        # Clamp logits more conservatively to prevent overflow
+        logits = torch.clamp(logits, min=-8.0, max=8.0)
+        
+        # Ensure temperature is safe for division (min 1e-4 to prevent extreme scaling)
+        temperature = torch.clamp(temperature, min=1e-4, max=100.0)
         
         if is_training:
             # Training mode: Gumbel-Softmax for differentiable sampling
-            soft_sequence = F.gumbel_softmax(
-                logits, 
-                tau=temperature, 
-                hard=False, 
-                dim=-1
-            )
+            try:
+                soft_sequence = F.gumbel_softmax(
+                    logits, 
+                    tau=temperature, 
+                    hard=False, 
+                    dim=-1
+                )
+                # Check for NaN/Inf after Gumbel-Softmax
+                if torch.isnan(soft_sequence).any() or torch.isinf(soft_sequence).any():
+                    # Fallback to regular softmax if Gumbel-Softmax fails
+                    soft_sequence = F.softmax(logits / temperature, dim=-1)
+            except Exception:
+                # Fallback to regular softmax if Gumbel-Softmax fails
+                soft_sequence = F.softmax(logits / temperature, dim=-1)
         else:
             # Inference mode: Straight-through estimator
-            # Soft probabilities for gradients
-            soft_sequence = F.softmax(logits / temperature, dim=-1)
+            # Soft probabilities for gradients with safe temperature scaling
+            scaled_logits = logits / temperature
+            soft_sequence = F.softmax(scaled_logits, dim=-1)
             
             # Hard one-hot for discrete sequence
             hard_sequence = F.one_hot(
@@ -109,6 +122,23 @@ class ContinuousSequenceRepr(nn.Module):
             
             # Straight-through: hard forward, soft backward
             soft_sequence = hard_sequence + (soft_sequence - soft_sequence.detach())
+        
+        # Final safety check for NaN/Inf values
+        if torch.isnan(soft_sequence).any() or torch.isinf(soft_sequence).any():
+            # Emergency fallback: uniform distribution
+            import warnings
+            warnings.warn(
+                f"NaN/Inf detected in sequence probabilities (temp={temperature.item():.6f}, "
+                f"landscape_idx={landscape_idx}). Using uniform fallback.", 
+                UserWarning
+            )
+            batch_size, seq_len = logits.shape[:2]
+            soft_sequence = torch.full(
+                (batch_size, seq_len, self.vocab_size), 
+                1.0 / self.vocab_size, 
+                device=logits.device, 
+                dtype=logits.dtype
+            )
         
         return soft_sequence
     
