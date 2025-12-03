@@ -1804,6 +1804,8 @@ def main():
     if args.streaming_mode:
         print("Using StreamingTrainer for streaming mode...")
         try:
+            # Add current directory to Python path for hybrid module
+            sys.path.insert(0, str(current_dir.parent.parent))
             from hybrid.training.train_energy_streaming import StreamingTrainer
 
             trainer = StreamingTrainer(config)
