@@ -1299,18 +1299,22 @@ class StreamingProteinDataset(IterableDataset):
                 
             # Flexible tensor validation (SCI-004 fix)
             try:
-                # Validate coordinates - handle batch dimension
-                if X.dim() == 4 and X.size(0) == 1:
-                    # Remove batch dimension: [1, L, 4, 3] -> [L, 4, 3]
-                    X = X.squeeze(0)
+                # Store original X with batch dimension for parsed_data
+                X_with_batch = X  # Keep [1, L, 4, 3] for storage
                 
-                if X.dim() != 3 or X.size(-1) != 3:
-                    self.logger.error(f"Invalid coordinate tensor shape for {pdb_path}: expected [L, 4, 3], got {X.shape}")
+                # Validate coordinates - handle batch dimension for validation only
+                X_for_validation = X
+                if X.dim() == 4 and X.size(0) == 1:
+                    # Remove batch dimension for validation: [1, L, 4, 3] -> [L, 4, 3]
+                    X_for_validation = X.squeeze(0)
+                
+                if X_for_validation.dim() != 3 or X_for_validation.size(-1) != 3:
+                    self.logger.error(f"Invalid coordinate tensor shape for {pdb_path}: expected [L, 4, 3], got {X_for_validation.shape}")
                     return None
                     
                 # Validate that we have 4 backbone atoms per residue (or allow flexibility)
-                if X.size(-2) not in [1, 4]:  # Allow CA-only (1 atom) or backbone atoms (4 atoms)
-                    self.logger.warning(f"Unexpected number of atoms per residue in {pdb_path}: {X.size(-2)}, expected 1 or 4")
+                if X_for_validation.size(-2) not in [1, 4]:  # Allow CA-only (1 atom) or backbone atoms (4 atoms)
+                    self.logger.warning(f"Unexpected number of atoms per residue in {pdb_path}: {X_for_validation.size(-2)}, expected 1 or 4")
                     
                 # Validate sequence
                 if S.dim() != 2:
@@ -1318,7 +1322,7 @@ class StreamingProteinDataset(IterableDataset):
                     return None
                     
                 # Check for NaN/Inf values that could cause training issues
-                if torch.isnan(X).any() or torch.isinf(X).any():
+                if torch.isnan(X_for_validation).any() or torch.isinf(X_for_validation).any():
                     self.logger.warning(f"Invalid coordinate values (NaN/Inf) in {pdb_path}")
                     return None
                     
@@ -1333,7 +1337,7 @@ class StreamingProteinDataset(IterableDataset):
             
             # Create validated result dictionary compatible with StabilityDataset format
             parsed_data = {
-                'coordinates': X,  # [1, L, 4, 3] - coordinates for N, CA, C, O atoms
+                'coordinates': X_with_batch,  # [1, L, 4, 3] - coordinates for N, CA, C, O atoms
                 'sequence_tokens': S,  # [1, L] - amino acid indices (0-19)
                 'sequence_str': sequence_str,  # Original sequence string for debugging
                 'mask': mask,  # [1, L] - valid position mask
@@ -1342,7 +1346,7 @@ class StreamingProteinDataset(IterableDataset):
                 'pdb_path': pdb_path
             }
             
-            self.logger.debug(f"Successfully parsed PDB {pdb_path}: {X.shape[1]} residues")
+            self.logger.debug(f"Successfully parsed PDB {pdb_path}: {X_with_batch.shape[1]} residues")
             return parsed_data
             
         except Exception as e:
