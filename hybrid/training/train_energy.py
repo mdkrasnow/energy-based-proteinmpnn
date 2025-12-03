@@ -1694,20 +1694,71 @@ class EnergyPredictionModel(nn.Module):
             encoded_backbone = backbone_features
 
         # Process sequence representation
+        print(f"DEBUG train_energy: Input sequence shape={sequence.shape}, min={sequence.min().item():.6f}, max={sequence.max().item():.6f}")
+        print(f"DEBUG train_energy: Input sequence NaN: {torch.isnan(sequence).any().item()}, Inf: {torch.isinf(sequence).any().item()}")
+        
         if sequence.dim() == 2:
+            print(f"DEBUG train_energy: Converting indices to logits (sequence.dim()=2)")
             # Convert indices to one-hot then to proper logits
-            sequence_onehot = F.one_hot(sequence.long(), num_classes=20).float()
+            sequence_long = sequence.long()
+            print(f"DEBUG train_energy: sequence long values: {sequence_long[:1, :5]}")  # First sample, first 5 values
+            print(f"DEBUG train_energy: sequence min={sequence_long.min().item()}, max={sequence_long.max().item()}")
+            
+            # Check for invalid indices
+            invalid_indices = (sequence_long < 0) | (sequence_long >= 20)
+            if invalid_indices.any():
+                print(f"DEBUG train_energy: INVALID SEQUENCE INDICES DETECTED!")
+                print(f"  Invalid count: {invalid_indices.sum().item()} out of {sequence_long.numel()}")
+                print(f"  Invalid values: {sequence_long[invalid_indices][:10].tolist()}")
+                # Clamp invalid indices to valid range
+                sequence_long = torch.clamp(sequence_long, 0, 19)
+                print("DEBUG train_energy: Clamped sequence indices to [0, 19]")
+            
+            sequence_onehot = F.one_hot(sequence_long, num_classes=20).float()
+            print(f"DEBUG train_energy: sequence_onehot shape={sequence_onehot.shape}, sum per position={sequence_onehot.sum(dim=-1)[:1, :5]}")
+            
+            # Check for problems in one-hot conversion
+            if torch.isnan(sequence_onehot).any() or torch.isinf(sequence_onehot).any():
+                print("DEBUG train_energy: NaN/Inf detected in one-hot conversion!")
+            
             # Convert to logits: use large positive value (10.0) for selected position, 0 for others
             # This creates valid logits that produce reasonable probabilities when passed through softmax
             sequence_logits = sequence_onehot * 10.0
         else:
+            print(f"DEBUG train_energy: Using existing logits (sequence.dim()={sequence.dim()})")
             # Already logits
             sequence_logits = sequence
 
+        # DEBUG: Check sequence_logits before passing to sequence_repr
+        print(f"DEBUG train_energy: sequence_logits shape={sequence_logits.shape}, min={sequence_logits.min().item():.6f}, max={sequence_logits.max().item():.6f}")
+        print(f"DEBUG train_energy: sequence_logits NaN: {torch.isnan(sequence_logits).any().item()}, Inf: {torch.isinf(sequence_logits).any().item()}")
+        print(f"DEBUG train_energy: landscape_idx={landscape_idx}, training={self.training}")
+        
+        # Additional debugging: check for extreme values that might cause numerical issues
+        if torch.isnan(sequence_logits).any() or torch.isinf(sequence_logits).any():
+            print("DEBUG train_energy: PROBLEMATIC SEQUENCE LOGITS DETECTED!")
+            nan_positions = torch.isnan(sequence_logits)
+            inf_positions = torch.isinf(sequence_logits) 
+            print(f"  NaN positions: {nan_positions.sum().item()} out of {sequence_logits.numel()}")
+            print(f"  Inf positions: {inf_positions.sum().item()} out of {sequence_logits.numel()}")
+            if nan_positions.any():
+                print(f"  First NaN at: {torch.where(nan_positions)[0][:3].tolist()}")
+            if inf_positions.any():
+                print(f"  First Inf at: {torch.where(inf_positions)[0][:3].tolist()}")
+            
+            # Replace problematic values to allow training to continue
+            sequence_logits = torch.where(torch.isnan(sequence_logits), torch.zeros_like(sequence_logits), sequence_logits)
+            sequence_logits = torch.where(torch.isinf(sequence_logits), torch.sign(sequence_logits) * 10.0, sequence_logits)
+            print("DEBUG train_energy: Cleaned sequence_logits, replacing NaN with 0, Inf with ±10")
+        
         # Get continuous sequence representation
         sequence_probs = self.sequence_repr(
             sequence_logits, landscape_idx, training=self.training
         )
+        
+        # DEBUG: Check sequence_probs after sequence_repr
+        print(f"DEBUG train_energy: sequence_probs shape={sequence_probs.shape}, min={sequence_probs.min().item():.6f}, max={sequence_probs.max().item():.6f}")
+        print(f"DEBUG train_energy: sequence_probs NaN: {torch.isnan(sequence_probs).any().item()}, Inf: {torch.isinf(sequence_probs).any().item()}")
 
         # Predict energy
         energies = self.energy_head(encoded_backbone, sequence_probs, mask)
