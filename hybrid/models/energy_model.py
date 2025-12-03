@@ -141,7 +141,7 @@ class EnergyBasedProteinMPNN(nn.Module):
     def _init_energy_head(self):
         """Initialize energy prediction head."""
         backbone_dim = self.mpnn_config.get('hidden_dim', 128)
-        sequence_dim = self.sequence_repr_config.get('hidden_dim', 128)
+        sequence_dim = 20  # Amino acid probability dimension (vocab_size)
         
         if self.proteinmpnn_available:
             try:

@@ -1734,58 +1734,59 @@ class EnergyPredictionModel(nn.Module):
         print(f"DEBUG train_energy: sequence_logits NaN: {torch.isnan(sequence_logits).any().item()}, Inf: {torch.isinf(sequence_logits).any().item()}")
         print(f"DEBUG train_energy: landscape_idx={landscape_idx}, training={self.training}")
         
-        # Additional debugging: check for extreme values that might cause numerical issues
+        # Check for extreme values that might cause numerical issues - NO LONGER CLEANING!
         if torch.isnan(sequence_logits).any() or torch.isinf(sequence_logits).any():
-            print("DEBUG train_energy: PROBLEMATIC SEQUENCE LOGITS DETECTED!")
             nan_positions = torch.isnan(sequence_logits)
             inf_positions = torch.isinf(sequence_logits) 
-            print(f"  NaN positions: {nan_positions.sum().item()} out of {sequence_logits.numel()}")
-            print(f"  Inf positions: {inf_positions.sum().item()} out of {sequence_logits.numel()}")
+            nan_count = nan_positions.sum().item()
+            inf_count = inf_positions.sum().item()
+            print("DEBUG train_energy: PROBLEMATIC SEQUENCE LOGITS DETECTED - NO LONGER CLEANING!")
+            print(f"  NaN positions: {nan_count} out of {sequence_logits.numel()}")
+            print(f"  Inf positions: {inf_count} out of {sequence_logits.numel()}")
             if nan_positions.any():
                 print(f"  First NaN at: {torch.where(nan_positions)[0][:3].tolist()}")
             if inf_positions.any():
                 print(f"  First Inf at: {torch.where(inf_positions)[0][:3].tolist()}")
+            print(f"DEBUG train_energy: Will pass dirty sequence_logits to sequence_repr to expose root cause")
             
-            # Replace problematic values to allow training to continue
-            sequence_logits = torch.where(torch.isnan(sequence_logits), torch.zeros_like(sequence_logits), sequence_logits)
-            sequence_logits = torch.where(torch.isinf(sequence_logits), torch.sign(sequence_logits) * 10.0, sequence_logits)
-            print("DEBUG train_energy: Cleaned sequence_logits, replacing NaN with 0, Inf with ±10")
+            import warnings
+            warnings.warn(
+                f"Problematic sequence_logits detected: {nan_count} NaN, {inf_count} Inf values. "
+                f"Cleaning DISABLED - will propagate to expose where these originate.", 
+                UserWarning
+            )
         
         # Get continuous sequence representation
-        print(f"DEBUG train_energy: Calling sequence_repr with sequence_logits shape {sequence_logits.shape}")
-        print(f"DEBUG train_energy: sequence_repr expected to output shape [*, *, 20]")
+        print(f"DEBUG train_energy: DIMENSION CHECK - About to call sequence_repr")
+        print(f"DEBUG train_energy: DIMENSION CHECK - sequence_repr type: {type(self.sequence_repr)}")
+        print(f"DEBUG train_energy: DIMENSION CHECK - sequence_repr vocab_size: {getattr(self.sequence_repr, 'vocab_size', 'MISSING!')}")
+        print(f"DEBUG train_energy: DIMENSION CHECK - sequence_repr class: {self.sequence_repr.__class__.__name__}")
+        if hasattr(self.sequence_repr, 'vocab_size'):
+            expected_output_dim = self.sequence_repr.vocab_size
+            print(f"DEBUG train_energy: DIMENSION CHECK - Expected output dim from sequence_repr: {expected_output_dim}")
+        else:
+            print(f"ERROR train_energy: DIMENSION CHECK - sequence_repr has no vocab_size attribute!")
+        
+        print(f"DEBUG train_energy: DIMENSION CHECK - Calling sequence_repr with sequence_logits shape {sequence_logits.shape}")
+        print(f"DEBUG train_energy: DIMENSION CHECK - Energy head expects shape [*, *, 20]")
         sequence_probs = self.sequence_repr(
             sequence_logits, landscape_idx, training=self.training
         )
-        print(f"DEBUG train_energy: sequence_repr RETURNED shape {sequence_probs.shape} - {'CORRECT' if sequence_probs.shape[-1] == 20 else 'WRONG!'}")
+        print(f"DEBUG train_energy: DIMENSION CHECK - sequence_repr RETURNED shape {sequence_probs.shape}")
+        print(f"DEBUG train_energy: DIMENSION CHECK - Expected 20, got {sequence_probs.shape[-1]} - {'CORRECT' if sequence_probs.shape[-1] == 20 else 'WRONG!'}")
         
         # DEBUG: Check sequence_probs after sequence_repr
         print(f"DEBUG train_energy: sequence_probs shape={sequence_probs.shape}, min={sequence_probs.min().item():.6f}, max={sequence_probs.max().item():.6f}")
         print(f"DEBUG train_energy: sequence_probs NaN: {torch.isnan(sequence_probs).any().item()}, Inf: {torch.isinf(sequence_probs).any().item()}")
         print(f"DEBUG train_energy: sequence_probs expected shape should be [*, *, 20], got [*, *, {sequence_probs.shape[-1]}]")
         
-        # EMERGENCY FIX: If sequence_probs has wrong shape, trace where it came from
+        # Validate sequence_probs dimensions (should be fixed now)
         if sequence_probs.shape[-1] != 20:
-            print(f"DEBUG train_energy: WRONG SEQUENCE_PROBS DIMENSION! Expected 20, got {sequence_probs.shape[-1]}")
+            print(f"ERROR train_energy: WRONG SEQUENCE_PROBS DIMENSION! Expected 20, got {sequence_probs.shape[-1]}")
             print(f"DEBUG train_energy: sequence_repr type: {type(self.sequence_repr)}")
             print(f"DEBUG train_energy: sequence_repr vocab_size: {getattr(self.sequence_repr, 'vocab_size', 'MISSING')}")
-            
-            # Check if sequence_repr is somehow the wrong object
             print(f"DEBUG train_energy: sequence_repr class name: {self.sequence_repr.__class__.__name__}")
-            print(f"DEBUG train_energy: sequence_repr attributes: {list(vars(self.sequence_repr).keys())[:10]}")
-            
-            # This suggests sequence_repr is returning the wrong tensor - possibly backbone features!
-            # Or it might be incorrectly instantiated with wrong vocab_size
-            # Let's force-fix it here before it reaches energy_head
-            print("DEBUG train_energy: FIXING sequence_probs dimension by creating uniform probabilities")
-            batch_size, seq_len = sequence_probs.shape[:2]
-            sequence_probs = torch.full(
-                (batch_size, seq_len, 20),
-                1.0 / 20,
-                device=sequence_probs.device,
-                dtype=sequence_probs.dtype
-            )
-            print(f"DEBUG train_energy: Fixed sequence_probs shape: {sequence_probs.shape}")
+            raise ValueError(f"sequence_probs has wrong dimension {sequence_probs.shape[-1]}, expected 20. This indicates a configuration error.")
 
         # DEBUG: Check tensor shapes before energy head call
         print(f"DEBUG train_energy: Before energy_head call:")

@@ -81,9 +81,11 @@ class ContinuousSequenceRepr(nn.Module):
         
         # Clean input logits if they contain NaN/Inf values
         if torch.isnan(logits).any() or torch.isinf(logits).any():
-            print("DEBUG sequence_repr: Cleaning NaN/Inf from input logits")
+            print("DEBUG sequence_repr: STEP 1 - Cleaning NaN/Inf from input logits")
+            print(f"DEBUG sequence_repr: STEP 1 - PRE-clean logits: NaN={torch.isnan(logits).sum().item()}, Inf={torch.isinf(logits).sum().item()}")
             logits = torch.where(torch.isnan(logits), torch.zeros_like(logits), logits)
             logits = torch.where(torch.isinf(logits), torch.sign(logits) * 8.0, logits)
+            print(f"DEBUG sequence_repr: STEP 1 - POST-clean logits: NaN={torch.isnan(logits).sum().item()}, Inf={torch.isinf(logits).sum().item()}")
         
         # Determine mode
         is_training = training if training is not None else self.training
@@ -98,81 +100,133 @@ class ContinuousSequenceRepr(nn.Module):
         print(f"DEBUG sequence_repr: logits contains Inf: {torch.isinf(logits).any().item()}")
         
         # Enhanced numerical stability safeguards
-        # Clamp logits more conservatively to prevent overflow
-        logits = torch.clamp(logits, min=-8.0, max=8.0)
+        print(f"DEBUG sequence_repr: STEP 2 - Pre-clamp validation")
+        print(f"DEBUG sequence_repr: STEP 2 - Pre-clamp logits: NaN={torch.isnan(logits).sum().item()}, Inf={torch.isinf(logits).sum().item()}")
         
-        # Ensure temperature is safe for division (min 1e-4 to prevent extreme scaling)
-        temperature = torch.clamp(temperature, min=1e-4, max=100.0)
+        # More conservative logits clamping to prevent overflow in downstream operations
+        logits = torch.clamp(logits, min=-5.0, max=5.0)
         
-        print(f"DEBUG sequence_repr: after clamp - temp={temperature.item():.8f}, logits_min={logits.min().item():.4f}, logits_max={logits.max().item():.4f}")
+        # Safer temperature bounds - use configured bounds to avoid breaking existing configs
+        temperature = torch.clamp(temperature, min=self.min_temperature, max=self.max_temperature)
+        
+        print(f"DEBUG sequence_repr: STEP 2 - Post-clamp validation")
+        print(f"DEBUG sequence_repr: STEP 2 - Post-clamp logits: NaN={torch.isnan(logits).sum().item()}, Inf={torch.isinf(logits).sum().item()}")
+        print(f"DEBUG sequence_repr: STEP 2 - temp={temperature.item():.8f}, logits_min={logits.min().item():.4f}, logits_max={logits.max().item():.4f}")
         
         if is_training:
             print(f"DEBUG sequence_repr: Using training mode (Gumbel-Softmax)")
-            # Training mode: Gumbel-Softmax for differentiable sampling
-            try:
-                soft_sequence = F.gumbel_softmax(
-                    logits, 
-                    tau=temperature, 
-                    hard=False, 
-                    dim=-1
-                )
-                print(f"DEBUG sequence_repr: Gumbel-Softmax output - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
-                print(f"DEBUG sequence_repr: Gumbel-Softmax NaN: {torch.isnan(soft_sequence).any().item()}, Inf: {torch.isinf(soft_sequence).any().item()}")
-                
-                # Check for NaN/Inf after Gumbel-Softmax
-                if torch.isnan(soft_sequence).any() or torch.isinf(soft_sequence).any():
-                    print("DEBUG sequence_repr: Gumbel-Softmax produced NaN/Inf, falling back to regular softmax")
-                    scaled_logits = logits / temperature
-                    print(f"DEBUG sequence_repr: Scaled logits - min={scaled_logits.min().item():.6f}, max={scaled_logits.max().item():.6f}")
-                    soft_sequence = F.softmax(scaled_logits, dim=-1)
-                    print(f"DEBUG sequence_repr: Fallback softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
-            except Exception as e:
-                print(f"DEBUG sequence_repr: Gumbel-Softmax exception: {e}")
-                # Fallback to regular softmax if Gumbel-Softmax fails
+            # Training mode: Robust Gumbel-Softmax with better numerical stability
+            
+            # For very low temperatures, skip Gumbel-Softmax and use regular softmax
+            # to avoid numerical instability from Gumbel noise
+            # Use threshold of 5x min_temperature to be adaptive to configuration
+            if temperature < (5.0 * self.min_temperature):
+                print("DEBUG sequence_repr: STEP 3A - Temperature too low, using regular softmax instead of Gumbel-Softmax")
                 scaled_logits = logits / temperature
-                print(f"DEBUG sequence_repr: Exception fallback scaled logits - min={scaled_logits.min().item():.6f}, max={scaled_logits.max().item():.6f}")
-                soft_sequence = F.softmax(scaled_logits, dim=-1)
-                print(f"DEBUG sequence_repr: Exception fallback softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+                print(f"DEBUG sequence_repr: STEP 3A - After scaling: NaN={torch.isnan(scaled_logits).sum().item()}, Inf={torch.isinf(scaled_logits).sum().item()}")
+                # Use log_softmax and exp for better numerical stability
+                log_probs = F.log_softmax(scaled_logits, dim=-1)
+                print(f"DEBUG sequence_repr: STEP 3A - After log_softmax: NaN={torch.isnan(log_probs).sum().item()}, Inf={torch.isinf(log_probs).sum().item()}")
+                soft_sequence = torch.exp(log_probs)
+                print(f"DEBUG sequence_repr: STEP 3A - After exp: NaN={torch.isnan(soft_sequence).sum().item()}, Inf={torch.isinf(soft_sequence).sum().item()}")
+                print(f"DEBUG sequence_repr: STEP 3A - Low-temp softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+            else:
+                try:
+                    print("DEBUG sequence_repr: STEP 3B - About to call Gumbel-Softmax")
+                    print(f"DEBUG sequence_repr: STEP 3B - Pre-Gumbel logits: NaN={torch.isnan(logits).sum().item()}, Inf={torch.isinf(logits).sum().item()}")
+                    soft_sequence = F.gumbel_softmax(
+                        logits, 
+                        tau=temperature, 
+                        hard=False, 
+                        dim=-1
+                    )
+                    print(f"DEBUG sequence_repr: STEP 3B - Post-Gumbel: NaN={torch.isnan(soft_sequence).sum().item()}, Inf={torch.isinf(soft_sequence).sum().item()}")
+                    print(f"DEBUG sequence_repr: STEP 3B - Gumbel-Softmax output - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+                    
+                    # Check for NaN/Inf after Gumbel-Softmax
+                    if torch.isnan(soft_sequence).any() or torch.isinf(soft_sequence).any():
+                        print("DEBUG sequence_repr: STEP 3C - Gumbel-Softmax produced NaN/Inf, falling back to stable softmax")
+                        scaled_logits = logits / temperature
+                        print(f"DEBUG sequence_repr: STEP 3C - After scaling: NaN={torch.isnan(scaled_logits).sum().item()}, Inf={torch.isinf(scaled_logits).sum().item()}")
+                        log_probs = F.log_softmax(scaled_logits, dim=-1)
+                        print(f"DEBUG sequence_repr: STEP 3C - After log_softmax: NaN={torch.isnan(log_probs).sum().item()}, Inf={torch.isinf(log_probs).sum().item()}")
+                        soft_sequence = torch.exp(log_probs)
+                        print(f"DEBUG sequence_repr: STEP 3C - After exp: NaN={torch.isnan(soft_sequence).sum().item()}, Inf={torch.isinf(soft_sequence).sum().item()}")
+                        print(f"DEBUG sequence_repr: STEP 3C - Stable fallback softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+                except Exception as e:
+                    print(f"DEBUG sequence_repr: STEP 3D - Gumbel-Softmax exception: {e}")
+                    # Robust fallback using log_softmax for numerical stability
+                    scaled_logits = logits / temperature
+                    print(f"DEBUG sequence_repr: STEP 3D - After scaling: NaN={torch.isnan(scaled_logits).sum().item()}, Inf={torch.isinf(scaled_logits).sum().item()}")
+                    log_probs = F.log_softmax(scaled_logits, dim=-1)
+                    print(f"DEBUG sequence_repr: STEP 3D - After log_softmax: NaN={torch.isnan(log_probs).sum().item()}, Inf={torch.isinf(log_probs).sum().item()}")
+                    soft_sequence = torch.exp(log_probs)
+                    print(f"DEBUG sequence_repr: STEP 3D - After exp: NaN={torch.isnan(soft_sequence).sum().item()}, Inf={torch.isinf(soft_sequence).sum().item()}")
+                    print(f"DEBUG sequence_repr: STEP 3D - Exception fallback stable softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
         else:
-            print(f"DEBUG sequence_repr: Using inference mode (straight-through)")
+            print(f"DEBUG sequence_repr: STEP 4A - Using inference mode (straight-through)")
             # Inference mode: Straight-through estimator
-            # Soft probabilities for gradients with safe temperature scaling
+            # Use robust softmax with numerical stability
             scaled_logits = logits / temperature
-            print(f"DEBUG sequence_repr: Inference scaled logits - min={scaled_logits.min().item():.6f}, max={scaled_logits.max().item():.6f}")
-            soft_sequence = F.softmax(scaled_logits, dim=-1)
-            print(f"DEBUG sequence_repr: Inference softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+            print(f"DEBUG sequence_repr: STEP 4A - After scaling: NaN={torch.isnan(scaled_logits).sum().item()}, Inf={torch.isinf(scaled_logits).sum().item()}")
+            print(f"DEBUG sequence_repr: STEP 4A - Inference scaled logits - min={scaled_logits.min().item():.6f}, max={scaled_logits.max().item():.6f}")
+            log_probs = F.log_softmax(scaled_logits, dim=-1)
+            print(f"DEBUG sequence_repr: STEP 4A - After log_softmax: NaN={torch.isnan(log_probs).sum().item()}, Inf={torch.isinf(log_probs).sum().item()}")
+            soft_sequence = torch.exp(log_probs)
+            print(f"DEBUG sequence_repr: STEP 4A - After exp: NaN={torch.isnan(soft_sequence).sum().item()}, Inf={torch.isinf(soft_sequence).sum().item()}")
+            print(f"DEBUG sequence_repr: STEP 4A - Inference stable softmax - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
             
             # Hard one-hot for discrete sequence
+            print(f"DEBUG sequence_repr: STEP 4B - Creating hard one-hot sequence")
             hard_sequence = F.one_hot(
                 logits.argmax(dim=-1), 
                 num_classes=self.vocab_size
             ).float()
+            print(f"DEBUG sequence_repr: STEP 4B - Hard sequence: NaN={torch.isnan(hard_sequence).sum().item()}, Inf={torch.isinf(hard_sequence).sum().item()}")
             
             # Straight-through: hard forward, soft backward
+            print(f"DEBUG sequence_repr: STEP 4C - Applying straight-through")
             soft_sequence = hard_sequence + (soft_sequence - soft_sequence.detach())
-            print(f"DEBUG sequence_repr: After straight-through - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+            print(f"DEBUG sequence_repr: STEP 4C - After straight-through: NaN={torch.isnan(soft_sequence).sum().item()}, Inf={torch.isinf(soft_sequence).sum().item()}")
+            print(f"DEBUG sequence_repr: STEP 4C - After straight-through - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
         
         # Final safety check for NaN/Inf values
         print(f"DEBUG sequence_repr: Final output - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
         print(f"DEBUG sequence_repr: Final NaN: {torch.isnan(soft_sequence).any().item()}, Inf: {torch.isinf(soft_sequence).any().item()}")
         
         if torch.isnan(soft_sequence).any() or torch.isinf(soft_sequence).any():
-            print("DEBUG sequence_repr: EMERGENCY FALLBACK TRIGGERED!")
-            # Emergency fallback: uniform distribution
+            nan_count = torch.isnan(soft_sequence).sum().item()
+            inf_count = torch.isinf(soft_sequence).sum().item()
+            print("DEBUG sequence_repr: NaN/Inf DETECTED - NO LONGER CLEANING, WILL PROPAGATE!")
+            print(f"DEBUG sequence_repr: Found {nan_count} NaN and {inf_count} Inf values")
+            print(f"DEBUG sequence_repr: temp={temperature.item():.8f}, landscape_idx={landscape_idx}")
+            print(f"DEBUG sequence_repr: is_training={is_training}, gumbel_softmax_used={temperature >= (5.0 * self.min_temperature)}")
             import warnings
             warnings.warn(
-                f"NaN/Inf detected in sequence probabilities (temp={temperature.item():.6f}, "
-                f"landscape_idx={landscape_idx}). Using uniform fallback.", 
+                f"NaN/Inf detected in sequence probabilities: {nan_count} NaN, {inf_count} Inf. "
+                f"Temperature={temperature.item():.8f}, landscape_idx={landscape_idx}. "
+                f"Emergency fallback DISABLED - will propagate to expose root cause.", 
                 UserWarning
             )
-            batch_size, seq_len = logits.shape[:2]
-            soft_sequence = torch.full(
-                (batch_size, seq_len, self.vocab_size), 
-                1.0 / self.vocab_size, 
-                device=logits.device, 
-                dtype=logits.dtype
-            )
-            print(f"DEBUG sequence_repr: Uniform fallback - min={soft_sequence.min().item():.6f}, max={soft_sequence.max().item():.6f}")
+        
+        # DIMENSION DEBUGGING: Validate output shape matches expected vocab_size
+        print(f"DEBUG sequence_repr: DIMENSION CHECK - Expected vocab_size: {self.vocab_size}")
+        print(f"DEBUG sequence_repr: DIMENSION CHECK - Actual output shape: {soft_sequence.shape}")
+        print(f"DEBUG sequence_repr: DIMENSION CHECK - Actual last dim: {soft_sequence.shape[-1]}")
+        print(f"DEBUG sequence_repr: DIMENSION CHECK - Matches expected? {soft_sequence.shape[-1] == self.vocab_size}")
+        
+        if soft_sequence.shape[-1] != self.vocab_size:
+            print(f"ERROR sequence_repr: DIMENSION MISMATCH!")
+            print(f"ERROR sequence_repr: Expected output shape [..., {self.vocab_size}], got [..., {soft_sequence.shape[-1]}]")
+            print(f"ERROR sequence_repr: This suggests a configuration error in sequence_repr")
+            print(f"ERROR sequence_repr: Check vocab_size parameter: configured={self.vocab_size}, actual_output={soft_sequence.shape[-1]}")
+            
+            # Check if we accidentally returned input logits or something else
+            print(f"ERROR sequence_repr: Input logits had shape {logits.shape}")
+            if soft_sequence.shape[-1] == logits.shape[-1]:
+                print(f"ERROR sequence_repr: Output matches input logits shape - logic error in forward pass!")
+            else:
+                print(f"ERROR sequence_repr: Output shape doesn't match input - unknown tensor returned!")
         
         print(f"DEBUG sequence_repr: Returning sequence_probs with shape {soft_sequence.shape}")
         return soft_sequence

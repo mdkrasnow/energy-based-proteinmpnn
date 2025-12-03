@@ -264,46 +264,24 @@ class EnergyHead(nn.Module):
         if torch.isnan(backbone_features).any() or torch.isinf(backbone_features).any():
             print("DEBUG energy_head: BACKBONE FEATURES CONTAIN NaN/Inf!")
             raise ValueError("backbone_features contains NaN or Inf values")
-        # EMERGENCY DIMENSION FIX: Check if sequence_probs has wrong dimension
+        # Validate sequence_probs dimensions (should be correct now)
         if sequence_probs.shape[-1] != self.seq_dim:
-            print(f"DEBUG energy_head: DIMENSION MISMATCH! sequence_probs has shape {sequence_probs.shape}, expected last dim {self.seq_dim}")
-            
+            print(f"ERROR energy_head: DIMENSION MISMATCH! sequence_probs has shape {sequence_probs.shape}, expected last dim {self.seq_dim}")
             if sequence_probs.shape[-1] == backbone_features.shape[-1]:
-                print("DEBUG energy_head: sequence_probs appears to be backbone_features! Creating fake sequence_probs")
-                # Create fake uniform sequence probabilities
-                batch_size, seq_len = sequence_probs.shape[:2]
-                sequence_probs = torch.full(
-                    (batch_size, seq_len, self.seq_dim),
-                    1.0 / self.seq_dim,
-                    device=sequence_probs.device,
-                    dtype=sequence_probs.dtype
-                )
-                print(f"DEBUG energy_head: Created uniform sequence_probs with shape {sequence_probs.shape}")
+                raise ValueError(f"sequence_probs appears to be backbone_features! Shape: {sequence_probs.shape}. This indicates a model configuration error.")
             else:
-                # Try to project to correct dimension
-                print(f"DEBUG energy_head: Projecting sequence_probs from {sequence_probs.shape[-1]} to {self.seq_dim}")
-                projection = torch.nn.Linear(sequence_probs.shape[-1], self.seq_dim, device=sequence_probs.device)
-                sequence_probs = projection(sequence_probs)
-                sequence_probs = torch.nn.functional.softmax(sequence_probs, dim=-1)
+                raise ValueError(f"sequence_probs has wrong dimension {sequence_probs.shape[-1]}, expected {self.seq_dim}. Check sequence_repr configuration.")
 
+        # Validate sequence_probs for NaN/Inf values - NO CLEANING, WILL CRASH TO EXPOSE ROOT CAUSE
         if torch.isnan(sequence_probs).any() or torch.isinf(sequence_probs).any():
-            print("DEBUG energy_head: SEQUENCE PROBS CONTAIN NaN/Inf!")
-            print(f"DEBUG energy_head: NaN count: {torch.isnan(sequence_probs).sum().item()}")
-            print(f"DEBUG energy_head: Inf count: {torch.isinf(sequence_probs).sum().item()}")
-            
-            # EMERGENCY FIX: Clean the sequence_probs instead of raising error
-            import warnings
-            warnings.warn("Cleaning NaN/Inf from sequence_probs to allow training to continue", UserWarning)
-            
-            # Replace NaN with zeros and Inf with safe values
-            sequence_probs = torch.where(torch.isnan(sequence_probs), torch.zeros_like(sequence_probs), sequence_probs)
-            sequence_probs = torch.where(torch.isinf(sequence_probs), torch.sign(sequence_probs) * 1.0, sequence_probs)
-            
-            # Ensure we still have valid probabilities by normalizing
-            sequence_probs = torch.nn.functional.softmax(sequence_probs, dim=-1)
-            
-            print(f"DEBUG energy_head: Cleaned sequence_probs - min={sequence_probs.min().item():.6f}, max={sequence_probs.max().item():.6f}")
-            print(f"DEBUG energy_head: Post-clean NaN: {torch.isnan(sequence_probs).any().item()}, Inf: {torch.isinf(sequence_probs).any().item()}")
+            nan_count = torch.isnan(sequence_probs).sum().item()
+            inf_count = torch.isinf(sequence_probs).sum().item()
+            print(f"ERROR energy_head: SEQUENCE PROBS CONTAIN {nan_count} NaN and {inf_count} Inf values!")
+            print(f"ERROR energy_head: This should help identify where NaNs originate - no cleaning performed!")
+            print(f"ERROR energy_head: Check sequence_repr implementation and input sequence_logits")
+            raise ValueError(f"sequence_probs contains {nan_count} NaN and {inf_count} Inf values. "
+                           f"This indicates a numerical stability issue. Cleaning DISABLED to expose root cause. "
+                           f"Check sequence_repr implementation, temperature settings, and input sequence_logits.")
         
         # Check for potential memory issues with very long sequences
         seq_len = backbone_features.shape[1]
