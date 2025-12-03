@@ -1,31 +1,21 @@
 #!/bin/bash
 #SBATCH -J train_streaming_hybrid           # Job name
-#SBATCH -p gpu_requeue                      # Use GPU requeue partition for production
-#SBATCH --constraint=a100                   # Require A100 GPUs
-#SBATCH --account=ydu_lab                   # Your lab account
-#SBATCH --gres=gpu:1                        # 1 A100 GPU (80GB VRAM)
-#SBATCH -c 16                               # 16 CPU cores (match streaming workers)
-#SBATCH -t 24:00:00                         # 24 hours for production streaming training
-#SBATCH --mem=250G                          # 250 GB RAM for large-scale streaming
-#SBATCH -o train_streaming_hybrid_%j.out    # STDOUT file
-#SBATCH -e train_streaming_hybrid_%j.err    # STDERR file
-#SBATCH --mail-type=BEGIN,END,FAIL,TIME_LIMIT # Comprehensive email notifications
-#SBATCH --mail-user=${SLURM_MAIL_USER}
-#SBATCH --requeue                           # Allow requeuing on node failure
-#SBATCH --signal=SIGUSR1@90                 # Send signal 90 seconds before time limit
-#SBATCH --open-mode=append                  # Append to output files on restart
+#SBATCH -p gpu_test                               # Use GPU partition for real training
+#SBATCH --account=ydu_lab                    # Your lab account
+#SBATCH --gres=gpu:1                         # 1 GPU
+#SBATCH -c 16                                # 16 CPU cores
+#SBATCH -t 00-03:00:00                       # 3 days for full training
+#SBATCH --mem=250G                            # 250 GB RAM
+#SBATCH -o train_streaming_hybrid_%j.out   # STDOUT file
+#SBATCH -e train_streaming_hybrid_%j.err   # STDERR file
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=mkrasnow@college.harvard.edu
 
 # ------------------------------------------------------------------------------
 # Validate environment and configuration
 # ------------------------------------------------------------------------------
 
-# Check if SLURM_MAIL_USER is set, warn if not
-if [ -z "${SLURM_MAIL_USER:-}" ]; then
-    echo "⚠️  WARNING: SLURM_MAIL_USER environment variable not set"
-    echo "   Email notifications will not be sent"
-    echo "   Set SLURM_MAIL_USER=your-email@domain.com to receive notifications"
-    echo ""
-fi
+# Email notifications configured for mkrasnow@college.harvard.edu
 
 echo "=============================================="
 echo "  Streaming Hybrid ProteinMPNN Training Job"
@@ -305,7 +295,7 @@ pip install --user -q torch torchvision torchaudio --index-url https://download.
     tensorboard scikit-learn \
     biopython biotite mdanalysis \
     requests urllib3 \
-    psutil gpustat nvidia-ml-py3
+    psutil
 
 echo "Dependencies installed."
 

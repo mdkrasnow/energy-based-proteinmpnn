@@ -24,9 +24,14 @@ ssh -o ControlPath="${CTRL_PATH}" "${REMOTE}" "mkdir -p hybrid_evaluation hybrid
 scp -o ControlPath="${CTRL_PATH}" hybrid/evaluation/run_comprehensive_evaluation.py "${REMOTE}:~/hybrid_evaluation/run_comprehensive_evaluation.py"
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy.py "${REMOTE}:~/hybrid_training/train_energy.py"
 
+# Copy streaming training files
+scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy_streaming.py "${REMOTE}:~/hybrid_training/train_energy_streaming.py"
+scp -o ControlPath="${CTRL_PATH}" hybrid/training/config_streaming.json "${REMOTE}:~/hybrid_training/config_streaming.json"
 
+# Copy SLURM job scripts
 scp -o ControlPath="${CTRL_PATH}" train_hybrid_proteinmpnn_dev.sh "${REMOTE}:~/train_hybrid_proteinmpnn_dev.sh"
 scp -o ControlPath="${CTRL_PATH}" train_hybrid_proteinmpnn.sh "${REMOTE}:~/train_hybrid_proteinmpnn.sh"
+scp -o ControlPath="${CTRL_PATH}" train_hybrid_streaming.sh "${REMOTE}:~/train_hybrid_streaming.sh"
 scp -o ControlPath="${CTRL_PATH}" eval_hybrid_proteinmpnn_dev.sh "${REMOTE}:~/eval_hybrid_proteinmpnn_dev.sh"
 scp -o ControlPath="${CTRL_PATH}" eval_hybrid_proteinmpnn.sh "${REMOTE}:~/eval_hybrid_proteinmpnn.sh"
 
