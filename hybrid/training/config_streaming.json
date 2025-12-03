@@ -1,0 +1,250 @@
+{
+    "experiment_name": "streaming_energy_model_19k_production_training",
+    "seed": 42,
+    
+    "streaming": {
+        "enabled": true,
+        "cache_dir": "${STREAMING_CACHE_DIR:-./cache/streaming}",
+        "max_memory_mb": 32768,
+        "max_disk_gb": 100,
+        "prefetch_factor": 8,
+        "num_workers": 16,
+        "background_download": true,
+        "concurrent_downloads": 16,
+        "connection_pool_size": 32,
+        "download_timeout_seconds": 300,
+        "retry_attempts": 3,
+        "chunk_size_mb": 10,
+        "a100_optimizations": {
+            "enabled": true,
+            "auto_tune_workers": true,
+            "auto_tune_prefetch": true,
+            "adaptive_cache_sizing": true,
+            "memory_optimization": true
+        }
+    },
+    
+    "data_sources": [
+        {
+            "type": "local_pdb",
+            "name": "local_pdbs",
+            "data_dir": "proteinmpnn/inputs/PDB_monomers/pdbs",
+            "weight": 0.3,
+            "enabled": true
+        },
+        {
+            "type": "remote_pdb",
+            "name": "pdb_database",
+            "base_url": "https://files.rcsb.org/download/",
+            "query_filters": {
+                "resolution_max": 2.5,
+                "method": ["X-RAY DIFFRACTION"],
+                "sequence_length_min": 50,
+                "sequence_length_max": 500
+            },
+            "weight": 0.7,
+            "enabled": false,
+            "api_key": null,
+            "rate_limit_per_second": 20
+        }
+    ],
+    
+    "data": {
+        "positive_ratio": 0.5,
+        "negative_methods": ["random", "mutated", "failed_design", "hard_negative"],
+        "negative_sampling_ratio": 0.5,
+        "max_sequence_length": 500,
+        "min_sequence_length": 20,
+        "val_split": 0.2,
+        "infinite_iteration": true,
+        "shuffle_sources": true,
+        "augmentation": {
+            "enabled": true,
+            "rotation_prob": 0.3,
+            "noise_std": 0.01,
+            "sequence_masking_prob": 0.1
+        }
+    },
+    
+    "quality_filters": {
+        "min_resolution": 0.5,
+        "max_resolution": 3.0,
+        "allowed_methods": ["X-RAY DIFFRACTION", "ELECTRON MICROSCOPY"],
+        "min_sequence_length": 20,
+        "max_sequence_length": 1000,
+        "exclude_low_confidence": true,
+        "validation_checks": ["structure_completeness", "sequence_consistency"]
+    },
+    
+    "cache_config": {
+        "pdb_cache": {
+            "max_memory_mb": 32768,
+            "max_disk_gb": 100,
+            "eviction_policy": "lru",
+            "compression": true,
+            "preload_popular": true,
+            "cache_warming_enabled": true,
+            "warmup_size": 100,
+            "adaptive_prefetching": true,
+            "prefetch_window": 50,
+            "a100_optimization": {
+                "enabled": true,
+                "concurrent_downloads": 16,
+                "high_bandwidth_mode": true,
+                "memory_hierarchy_optimization": true
+            },
+            "sample_size_optimization": {
+                "enabled": true,
+                "target_samples": 19000,
+                "batch_optimization": "adaptive",
+                "memory_scaling": true
+            }
+        },
+        "metadata_cache": {
+            "db_path": "${STREAMING_CACHE_DIR:-./cache/streaming}/metadata.db",
+            "refresh_interval_hours": 12,
+            "backup_enabled": true,
+            "sync_interval_minutes": 30
+        },
+        "performance_cache": {
+            "pin_memory": true,
+            "prefetch_to_device": true,
+            "async_loading": true,
+            "a100_optimizations": {
+                "tensor_core_optimization": true,
+                "memory_coalescing": true,
+                "bandwidth_optimization": true,
+                "prefetch_depth": 8
+            },
+            "monitoring": {
+                "performance_metrics_enabled": true,
+                "cache_statistics_enabled": true,
+                "resource_monitoring_enabled": true,
+                "optimization_recommendations": true
+            }
+        }
+    },
+    
+    "model": {
+        "mpnn_encoder": {
+            "model_name": "v_48_020",
+            "hidden_dim": 128,
+            "freeze_layers": true
+        },
+        "energy_head": {
+            "hidden_dim": 512,
+            "num_layers": 3,
+            "dropout": 0.1,
+            "activation": "relu",
+            "use_batch_norm": true
+        },
+        "sequence_repr": {
+            "temperature_schedule": [1.0, 0.5, 0.1],
+            "min_temperature": 0.001,
+            "max_temperature": 10.0
+        }
+    },
+    
+    "loss": {
+        "margin": 1.0,
+        "temperature": 0.1,
+        "ranking_weight": 1.0,
+        "contrastive_weight": 1.0,
+        "entropy_weight": 0.01,
+        "smoothness_weight": 0.001,
+        "negative_weights": {
+            "random": 1.0,
+            "mutated": 1.0,
+            "failed_design": 1.0,
+            "hard_negative": 2.0
+        },
+        "dynamic_weighting": {
+            "enabled": true,
+            "adaptation_rate": 0.01,
+            "min_weight": 0.1,
+            "max_weight": 5.0
+        }
+    },
+    
+    "optimization": {
+        "optimizer": "adamw",
+        "learning_rate": 1e-4,
+        "weight_decay": 0.01,
+        "betas": [0.9, 0.999],
+        "eps": 1e-8,
+        "scheduler": {
+            "type": "reduce_on_plateau",
+            "factor": 0.5,
+            "patience": 10
+        }
+    },
+    
+    "training": {
+        "max_epochs": 300,
+        "max_steps": 150000,
+        "batch_size": 16,
+        "gradient_accumulation_steps": 4,
+        "num_workers": 8,
+        "max_grad_norm": 1.0,
+        "patience": 50,
+        "save_frequency": 50,
+        "eval_frequency": 250,
+        "log_frequency": 25,
+        "mixed_precision": true
+    },
+    
+    "monitoring": {
+        "wandb": {
+            "enabled": false,
+            "project": "energy-based-proteinmpnn-streaming",
+            "tags": ["streaming", "large-scale"]
+        },
+        "tensorboard": {
+            "enabled": true,
+            "log_dir": "${TENSORBOARD_LOG_DIR:-./logs/tensorboard}"
+        },
+        "metrics": {
+            "track_cache_stats": true,
+            "track_download_stats": true,
+            "track_memory_usage": true
+        }
+    },
+    
+    "resume_from_checkpoint": null,
+    "debug": {
+        "max_samples_per_epoch": null,
+        "profile_data_loading": true,
+        "validate_samples": true,
+        "memory_profiling": true,
+        "cache_statistics": true,
+        "large_scale_optimizations": {
+            "enabled": true,
+            "target_training_samples": 19000,
+            "adaptive_caching": true,
+            "progressive_prefetch": true,
+            "a100_streaming_optimization": true,
+            "intelligent_cache_warming": true,
+            "resource_optimization": true,
+            "performance_monitoring": true
+        }
+    },
+    
+    "hardware_optimization": {
+        "gpu_type": "a100_80gb",
+        "memory_fraction": 0.9,
+        "mixed_precision": "fp16",
+        "tensor_cores": true,
+        "cudnn_benchmark": true,
+        "pin_memory": true,
+        "non_blocking_transfer": true
+    },
+    
+    "cluster_config": {
+        "partition": "gpu_requeue",
+        "constraint": "a100",
+        "memory_gb": 250,
+        "time_limit_hours": 24,
+        "scratch_space": "${CLUSTER_SCRATCH_SPACE:-/n/netscratch}",
+        "checkpoint_frequency_minutes": 30
+    }
+}

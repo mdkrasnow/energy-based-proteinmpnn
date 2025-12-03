@@ -7,7 +7,20 @@ This module contains the core neural network architectures:
 - Energy head for stability prediction
 """
 
-# Model imports will be added as components are implemented
-# from .mpnn_encoder import ProteinMPNNBackboneEncoder
-# from .sequence_repr import ContinuousSequenceRepr
-# from .energy_head import EnergyHead
+# Model imports - now with actual ProteinMPNN integration
+from .mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_encoder
+from .sequence_repr import ContinuousSequenceRepr
+from .energy_head import EnergyHead
+
+# Main hybrid model with actual ProteinMPNN integration (no more placeholders!)
+from .energy_model import EnergyBasedProteinMPNN, DeterministicStructuralEncoder, DeterministicSequenceEmbedding
+
+__all__ = [
+    "EnergyBasedProteinMPNN",
+    "ProteinMPNNBackboneEncoder", 
+    "load_pretrained_encoder",
+    "ContinuousSequenceRepr",
+    "EnergyHead",
+    "DeterministicStructuralEncoder",
+    "DeterministicSequenceEmbedding"
+]

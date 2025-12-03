@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -J train_hybrid_proteinmpnn           # Job name
-#SBATCH -p gpu                               # Use GPU partition for real training
+#SBATCH -p gpu_test                               # Use GPU partition for real training
 #SBATCH --account=ydu_lab                    # Your lab account
 #SBATCH --gres=gpu:1                         # 1 GPU
 #SBATCH -c 16                                # 16 CPU cores
-#SBATCH -t 01-12:00:00                       # 3 days for full training
+#SBATCH -t 00-03:00:00                       # 3 days for full training
 #SBATCH --mem=64G                            # 64 GB RAM
 #SBATCH -o train_hybrid_proteinmpnn_%j.out   # STDOUT file
 #SBATCH -e train_hybrid_proteinmpnn_%j.err   # STDERR file
@@ -168,14 +168,21 @@ for pdb_file in "${PDB_FILES[@]}"; do
     echo "  - $(basename "$pdb_file") ($(basename "$(dirname "$pdb_file")"))"
 done
 
-# Copy all PDB files to training data directory
+# Copy first 20 PDB files to training data directory for testing
 # (Training dataset will handle train/val/test split internally via config)
 echo ""
-echo "Copying real PDB files for training..."
+echo "Copying first 20 real PDB files for testing..."
 
 copied_count=0
+max_files=20
 
 for pdb_file in "${PDB_FILES[@]}"; do
+    # Stop after copying 20 files
+    if [ $copied_count -ge $max_files ]; then
+        echo "  Reached limit of $max_files files for testing"
+        break
+    fi
+    
     filename=$(basename "$pdb_file")
     dest_file="$JOB_SCRATCH/data/$filename"
     
@@ -305,6 +312,22 @@ echo "=============================================="
 if [ $TRAIN_EXIT -eq 0 ]; then
     echo "✓ Hybrid ProteinMPNN training completed successfully!"
     echo "  Duration: ${duration}s ($(($duration / 3600))h $(($duration % 3600 / 60))m)"
+    
+    # Calculate per-data-point timing
+    if [ $copied_count -gt 0 ]; then
+        per_datapoint_time=$((duration / copied_count))
+        echo "  Training time per data point: ${per_datapoint_time}s ($(echo "scale=2; $duration / $copied_count" | bc 2>/dev/null || echo "$per_datapoint_time")s)"
+        echo "  Data points processed: $copied_count"
+        
+        # Estimate time for full dataset if we had used all PDB files
+        total_pdb_files=${#PDB_FILES[@]}
+        if [ $total_pdb_files -gt $copied_count ]; then
+            estimated_full_time=$((per_datapoint_time * total_pdb_files))
+            estimated_hours=$((estimated_full_time / 3600))
+            estimated_days=$((estimated_hours / 24))
+            echo "  Estimated time for full dataset ($total_pdb_files files): ${estimated_full_time}s (~${estimated_hours}h / ~${estimated_days}d)"
+        fi
+    fi
     
     # Check for saved models
     if [ -f "$CHECKPOINT_DIR/best_model.pt" ]; then
@@ -441,14 +464,32 @@ if [ -f "$JOB_SCRATCH"/*.log ]; then
     /bin/cp "$JOB_SCRATCH"/*.log "$FINAL_RESULTS_DIR/"
 fi
 
-# Create training summary
+# Create training summary with timing details
 TRAINING_SUMMARY="$FINAL_RESULTS_DIR/training_summary.json"
+
+# Calculate timing metrics
+if [ $copied_count -gt 0 ]; then
+    per_datapoint_time=$((duration / copied_count))
+    total_pdb_files=${#PDB_FILES[@]}
+    estimated_full_time=$((per_datapoint_time * total_pdb_files))
+else
+    per_datapoint_time=0
+    total_pdb_files=0
+    estimated_full_time=0
+fi
+
 cat > "$TRAINING_SUMMARY" << EOF
 {
     "job_id": "$SLURM_JOB_ID",
     "training_completed": $([ $TRAIN_EXIT -eq 0 ] && echo "true" || echo "false"),
     "training_duration_seconds": $duration,
     "training_exit_code": $TRAIN_EXIT,
+    "data_points_processed": $copied_count,
+    "total_pdb_files_available": $total_pdb_files,
+    "training_time_per_datapoint_seconds": $per_datapoint_time,
+    "estimated_full_dataset_time_seconds": $estimated_full_time,
+    "estimated_full_dataset_hours": $((estimated_full_time / 3600)),
+    "estimated_full_dataset_days": $((estimated_full_time / 86400)),
     "checkpoint_directory": "$FINAL_RESULTS_DIR/checkpoints",
     "log_directory": "$FINAL_RESULTS_DIR/logs",
     "config_file": "$FINAL_RESULTS_DIR/training_config.json",

@@ -2554,27 +2554,27 @@ class StabilityDataset(Dataset):
         split_datasets = {}
         
         for split_name, sample_indices in splits.items():
-            # Create new dataset instance with subset of samples
-            split_dataset = StabilityDataset.__new__(StabilityDataset)
+            # TYPE SAFETY FIX (IMP-001): Replace dynamic setattr with proper initialization
+            # This ensures type safety and prevents potential attribute injection vulnerabilities
             
-            # Copy configuration from parent
-            for attr in ['data_dir', 'positive_ratio', 'negative_methods', 'max_sequence_length',
-                        'min_sequence_length', 'structure_extensions', 'cache_dir', 'seed',
-                        'transform', 'target_transform', 'lazy_loading', 'include_coordinates']:
-                setattr(split_dataset, attr, getattr(self, attr))
+            # Create new dataset instance with proper constructor call instead of dynamic attribute setting
+            split_dataset = StabilityDataset(
+                data_dir=self.data_dir,
+                positive_ratio=self.positive_ratio,
+                negative_methods=self.negative_methods,
+                max_sequence_length=self.max_sequence_length,
+                min_sequence_length=self.min_sequence_length,
+                structure_extensions=self.structure_extensions,
+                cache_dir=self.cache_dir,
+                seed=self.seed,
+                transform=self.transform,
+                target_transform=self.target_transform,
+                lazy_loading=True,  # Split datasets should be lazily loaded
+                include_coordinates=self.include_coordinates
+            )
             
-            # Copy amino acid properties and other setup
-            split_dataset.amino_acids = self.amino_acids
-            split_dataset.aa_to_idx = self.aa_to_idx
-            split_dataset.idx_to_aa = self.idx_to_aa
-            split_dataset.natural_frequencies = self.natural_frequencies
-            split_dataset.hydrophobic = self.hydrophobic
-            split_dataset.polar = self.polar
-            split_dataset.charged_positive = self.charged_positive
-            split_dataset.charged_negative = self.charged_negative
-            split_dataset.aromatic = self.aromatic
-            split_dataset.small = self.small
-            split_dataset.conservative_groups = self.conservative_groups
+            # Override with subset-specific data (type-safe attribute access)
+            # The constructor has already set up all the amino acid properties correctly
             split_dataset.rng = np.random.RandomState(self.seed + hash(split_name) % 1000)
             split_dataset._lazy_loaded = True  # Split datasets are already loaded
             
