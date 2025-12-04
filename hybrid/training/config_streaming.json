@@ -139,6 +139,7 @@
             "use_batch_norm": true
         },
         "sequence_repr": {
+            "vocab_size": 20,
             "temperature_schedule": [1.0, 0.5, 0.1],
             "min_temperature": 0.001,
             "max_temperature": 10.0

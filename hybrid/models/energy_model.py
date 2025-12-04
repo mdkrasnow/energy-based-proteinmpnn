@@ -125,18 +125,36 @@ class EnergyBasedProteinMPNN(nn.Module):
             raise RuntimeError("ProteinMPNN not available and deterministic_fallback=False")
     
     def _init_sequence_representation(self):
-        """Initialize sequence representation - using deterministic fallback for now."""
-        # Note: ContinuousSequenceRepr is designed for optimization loops with logits
-        # For our current energy prediction use case, we use deterministic embeddings
-        self._init_fallback_sequence_repr()
+        """Initialize sequence representation with proper ContinuousSequenceRepr."""
+        try:
+            # Try to initialize ContinuousSequenceRepr with proper config
+            from .sequence_repr import ContinuousSequenceRepr
+            self.sequence_repr = ContinuousSequenceRepr(
+                vocab_size=self.sequence_repr_config.get('vocab_size', 20),
+                temperature_schedule=self.sequence_repr_config.get('temperature_schedule', [1.0, 0.5, 0.1]),
+                min_temperature=self.sequence_repr_config.get('min_temperature', 0.001),
+                max_temperature=self.sequence_repr_config.get('max_temperature', 10.0)
+            )
+            print(f"✓ Initialized ContinuousSequenceRepr with vocab_size={self.sequence_repr.vocab_size}")
+        except ImportError as e:
+            print(f"Warning: Could not import ContinuousSequenceRepr: {e}")
+            self._init_fallback_sequence_repr()
+        except Exception as e:
+            print(f"Warning: Failed to initialize ContinuousSequenceRepr: {e}")
+            self._init_fallback_sequence_repr()
     
     def _init_fallback_sequence_repr(self):
         """Initialize deterministic sequence representation fallback."""
+        # Use vocab_size instead of hidden_dim for sequence representation
+        vocab_size = self.sequence_repr_config.get('vocab_size', 20)
+        embedding_dim = self.sequence_repr_config.get('embedding_dim', vocab_size)  # Default embedding_dim to vocab_size for compatibility
+        
         self.sequence_repr = DeterministicSequenceEmbedding(
-            vocab_size=21,
-            embedding_dim=self.sequence_repr_config.get('hidden_dim', 128),
+            vocab_size=vocab_size,
+            embedding_dim=embedding_dim,
             deterministic=self.deterministic_fallback
         )
+        print(f"✓ Using fallback DeterministicSequenceEmbedding with vocab_size={vocab_size}, embedding_dim={embedding_dim}")
     
     def _init_energy_head(self):
         """Initialize energy prediction head."""
