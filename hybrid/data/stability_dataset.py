@@ -104,7 +104,7 @@ except ImportError as e:
 
 # Import MPNN encoder for backbone features extraction
 try:
-    from ..models.mpnn_encoder import ProteinMPNNBackboneEncoder
+    from models.mpnn_encoder import ProteinMPNNBackboneEncoder
     MPNN_ENCODER_AVAILABLE = True
 except (ImportError, ValueError):
     try:

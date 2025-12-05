@@ -2254,7 +2254,7 @@ def create_evaluation_dataset_from_pdbs(pdb_dir: str, num_samples: int = 100) ->
     
     # Use the actual StabilityDataset with real PDB files
     try:
-        from ..data.stability_dataset import StabilityDataset
+        from data.stability_dataset import StabilityDataset
     except ImportError:
         # Fallback for direct execution
         import sys

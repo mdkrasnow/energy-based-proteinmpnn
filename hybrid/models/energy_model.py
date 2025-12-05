@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
 # Import shared vocabulary constants
-from ..data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET, IDX_TO_AMINO_ACID
+from data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET, IDX_TO_AMINO_ACID
 
 # Import actual ProteinMPNN components
 try:
