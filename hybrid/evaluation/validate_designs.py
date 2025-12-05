@@ -88,6 +88,7 @@ sys.path.append(str(project_root))
 from models.mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_encoder
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
+from data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET
 
 # Import ProteinMPNN utilities for perplexity measurement
 sys.path.append(os.path.join(str(project_root), "..", "proteinmpnn"))
@@ -125,9 +126,11 @@ try:
 except ImportError:
     warnings.warn("PyRosetta not available. Using simplified energy calculations.")
 
-# Constants
-CANONICAL_AA_ORDER = "ACDEFGHIKLMNPQRSTVWY"
-AA_TO_INDEX = {aa: i for i, aa in enumerate(CANONICAL_AA_ORDER)}
+# Constants - CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+# This fixes the data corruption bug where validation was using alphabetical order
+# instead of the ProteinMPNN standard order used by training systems
+CANONICAL_AA_ORDER = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
+AA_TO_INDEX = AMINO_ACID_TO_IDX.copy()
 
 # Amino acid properties for aggregation analysis
 # Hydrophobicity values from Kyte-Doolittle scale (canonical reference)

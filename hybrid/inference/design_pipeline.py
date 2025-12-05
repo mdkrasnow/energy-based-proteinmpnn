@@ -35,10 +35,12 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-# Canonical amino acid ordering for pipeline
-CANONICAL_AA_ORDER = 'ACDEFGHIKLMNPQRSTVWY'
-AA_TO_INDEX = {aa: i for i, aa in enumerate(CANONICAL_AA_ORDER)}
-INDEX_TO_AA = {i: aa for i, aa in enumerate(CANONICAL_AA_ORDER)}
+# CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+# This fixes the data corruption bug where inference was using alphabetical order
+# instead of the ProteinMPNN standard order used by training systems
+CANONICAL_AA_ORDER = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
+AA_TO_INDEX = AMINO_ACID_TO_IDX.copy()
+INDEX_TO_AA = IDX_TO_AMINO_ACID.copy()
 
 # Constants for transparency tracking
 INITIALIZATION_METHODS = {
@@ -65,6 +67,7 @@ from models.mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_enco
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from inference.ired_optimizer import IREDSequenceOptimizer, OptimizationConfig, OptimizationResult
+from data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET, IDX_TO_AMINO_ACID
 from utils import checkpoint_utils  # PyTorch 2.6 safe_globals registration
 
 # Import ProteinMPNN utilities for PDB parsing and decoder initialization
@@ -896,10 +899,9 @@ class ProteinDesignPipeline:
         Returns:
             Converted logits tensor with canonical amino acid ordering
         """
-        # Standard ProteinMPNN amino acid order (based on ProteinMPNN codebase)
-        # Note: ProteinMPNN typically uses the same alphabetical order as our canonical order
-        # but this validation ensures compatibility if different ProteinMPNN versions change this
-        PROTEINMPNN_AA_ORDER = 'ACDEFGHIKLMNPQRSTVWY'
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        # This ensures consistency with training data and other pipeline components
+        PROTEINMPNN_AA_ORDER = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         
         # Validate tensor shape and vocabulary size
         if logits.dim() != 3:
@@ -1269,8 +1271,8 @@ class ProteinDesignPipeline:
         analyzer: 'SequencePropertyAnalyzer'
     ) -> Dict[str, Any]:
         """Analyze sequence properties using evaluation framework"""
-        # Convert tensor sequences to string sequences for analysis
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         string_sequences = []
         
         for seq_tensor in sequences:
@@ -1792,7 +1794,8 @@ class ProteinDesignPipeline:
     
     def _save_batch_fasta(self, results: List[DesignResult], output_dir: str):
         """Save all designed sequences as FASTA files"""
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         
         # All sequences in one file
         all_fasta_path = os.path.join(output_dir, 'all_designed_sequences.fasta')
@@ -1866,7 +1869,8 @@ class ProteinDesignPipeline:
         if result.sequences is None:
             return
         
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         output_path = os.path.join(output_dir, f'designed_sequences_{index}.fasta')
         
         with open(output_path, 'w') as f:

@@ -66,6 +66,7 @@ from models.mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_enco
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from data.stability_dataset import StabilityDataset
+from data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET
 from utils import checkpoint_utils  # PyTorch 2.6 safe_globals registration
 
 
@@ -1036,8 +1037,9 @@ class SequencePropertyAnalyzer:
     
     def _load_aa_properties(self) -> Dict[str, Dict[str, float]]:
         """Load amino acid biochemical properties."""
-        # Standard amino acid single-letter codes
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        # This fixes the data corruption bug where evaluation was using alphabetical order
+        amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         
         # Simplified property values (normalized to [0, 1])
         properties = {
@@ -1097,7 +1099,8 @@ class SequencePropertyAnalyzer:
     
     def _analyze_composition(self, sequences: List[str]) -> Dict[str, Any]:
         """Analyze amino acid composition."""
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module  
+        amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         
         # Count occurrences
         total_residues = sum(len(seq) for seq in sequences)
@@ -1200,7 +1203,8 @@ class SequencePropertyAnalyzer:
         freq2: Dict[str, float]
     ) -> float:
         """Compute similarity between amino acid compositions using Jensen-Shannon divergence."""
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         
         # Convert to arrays
         f1 = np.array([freq1[aa] for aa in amino_acids])
@@ -2143,7 +2147,8 @@ class EnergyModelEvaluator:
                 elif 'sequence_probs' in sample:
                     seq_probs = sample['sequence_probs']
                     seq_indices = seq_probs.argmax(dim=-1)
-                    amino_acids = "ACDEFGHIKLMNPQRSTVWY"
+                    # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+                    amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
                     sequence = ''.join(amino_acids[i] for i in seq_indices)
                 
                 if sequence and len(sequence) > 0:

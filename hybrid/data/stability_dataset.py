@@ -21,6 +21,9 @@ import pandas as pd
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
+# Import shared vocabulary constants
+from .vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET, IDX_TO_AMINO_ACID
+
 # BioPython imports with error handling
 try:
     from Bio.PDB import PDBParser, PDBIO
@@ -292,10 +295,12 @@ class StabilityDataset(Dataset):
     
     def _init_amino_acid_properties(self):
         """Initialize amino acid properties for sequence generation"""
-        # Standard amino acid alphabet (20 canonical)
-        self.amino_acids = "ACDEFGHIKLMNPQRSTVWY"
-        self.aa_to_idx = {aa: i for i, aa in enumerate(self.amino_acids)}
-        self.idx_to_aa = {i: aa for i, aa in enumerate(self.amino_acids)}
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        # This fixes the data corruption bug where StabilityDataset was using alphabetical order
+        # instead of the ProteinMPNN standard order used by streaming datasets  
+        self.amino_acids = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
+        self.aa_to_idx = AMINO_ACID_TO_IDX.copy()
+        self.idx_to_aa = IDX_TO_AMINO_ACID.copy()
         
         # Natural amino acid frequencies (from Swiss-Prot)
         self.natural_frequencies = {

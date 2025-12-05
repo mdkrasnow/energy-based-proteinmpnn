@@ -66,6 +66,7 @@ from models.mpnn_encoder import ProteinMPNNBackboneEncoder
 from models.energy_head import EnergyHead
 from models.sequence_repr import ContinuousSequenceRepr
 from data.stability_dataset import StabilityDataset
+from data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET
 from training.losses import ContrastiveLoss, NegativeType
 from utils import checkpoint_utils  # PyTorch 2.6 safe_globals registration
 
@@ -501,10 +502,11 @@ class EnergyModelTrainer:
         batch_size = self.config["training"]["batch_size"]
         num_workers = self.config["training"].get("num_workers", 4)
 
-        # Amino acid encoding utilities
-        # Standard amino acid alphabet (same as in StabilityDataset)
-        amino_acids = "ACDEFGHIKLMNPQRSTVWY"
-        aa_to_idx = {aa: i for i, aa in enumerate(amino_acids)}
+        # Amino acid encoding utilities  
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        # This fixes the data corruption bug where train_energy.py was using alphabetical order
+        # instead of the ProteinMPNN standard order used by streaming datasets
+        aa_to_idx = AMINO_ACID_TO_IDX  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
 
         def encode_sequence(sequence):
             """Convert amino acid sequence string to tensor of indices"""
@@ -512,13 +514,17 @@ class EnergyModelTrainer:
                 if not sequence:
                     return torch.tensor([], dtype=torch.long)
 
-                # Convert string sequence to indices
+                # Convert string sequence to indices with logged placeholder mapping
                 indices = []
-                for aa in sequence:
+                for i, aa in enumerate(sequence):
                     aa_upper = aa.upper()
                     if aa_upper in aa_to_idx:
                         indices.append(aa_to_idx[aa_upper])
-                    # Skip unknown amino acids (don't raise error, just filter)
+                    else:
+                        # CRITICAL FIX: Map unknown amino acids to Alanine placeholder
+                        # This preserves sequence length and maintains sequence-coordinate alignment
+                        print(f"Warning: Unknown amino acid '{aa}' at position {i} in sequence, mapping to Alanine (A) placeholder")
+                        indices.append(aa_to_idx['A'])  # Alanine = index 0 in ProteinMPNN order
 
                 return torch.tensor(indices, dtype=torch.long)
             elif isinstance(sequence, torch.Tensor):

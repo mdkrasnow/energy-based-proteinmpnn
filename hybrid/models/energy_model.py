@@ -13,6 +13,9 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
+# Import shared vocabulary constants
+from ..data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET, IDX_TO_AMINO_ACID
+
 # Import actual ProteinMPNN components
 try:
     from .mpnn_encoder import ProteinMPNNBackboneEncoder, load_pretrained_encoder
@@ -325,7 +328,8 @@ class EnergyBasedProteinMPNN(nn.Module):
     
     def _tensor_to_sequence(self, seq_tensor: torch.Tensor) -> str:
         """Convert amino acid index tensor to sequence string."""
-        aa_alphabet = 'ACDEFGHIKLMNPQRSTVWY'
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        aa_alphabet = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
         if len(seq_tensor.shape) == 0:  # scalar
             return aa_alphabet[seq_tensor.item() % 20]
         return ''.join([aa_alphabet[idx.item() % 20] for idx in seq_tensor])
@@ -708,9 +712,10 @@ class DeterministicSequenceEmbedding(nn.Module):
         self.embedding_dim = embedding_dim
         self.deterministic = deterministic
         
-        # Standard amino acid alphabet
-        self.aa_alphabet = 'ACDEFGHIKLMNPQRSTVWY'
-        self.aa_to_idx = {aa: i for i, aa in enumerate(self.aa_alphabet)}
+        # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+        # This fixes the data corruption bug where energy model was using alphabetical order
+        self.aa_alphabet = AMINO_ACID_ALPHABET  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
+        self.aa_to_idx = AMINO_ACID_TO_IDX.copy()
         
         # Deterministic embedding based on physicochemical properties
         if deterministic:

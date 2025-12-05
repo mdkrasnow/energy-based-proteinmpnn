@@ -475,19 +475,25 @@ echo "Launching streaming training with config: $STREAMING_CONFIG"
 
 # Enhanced training with process monitoring
 (
-    python hybrid/training/train_energy.py \
-        --config "$STREAMING_CONFIG" \
-        --model_dir "$CHECKPOINT_DIR" \
-        --log_dir "$LOG_DIR" \
-        --device cuda \
-        --streaming_mode \
-        --resume_from_checkpoint "$CHECKPOINT_DIR/latest.pt" 2>/dev/null || \
-    python hybrid/training/train_energy.py \
-        --config "$STREAMING_CONFIG" \
-        --model_dir "$CHECKPOINT_DIR" \
-        --log_dir "$LOG_DIR" \
-        --device cuda \
-        --streaming_mode
+    # Check if checkpoint file exists before attempting resume
+    if [ -f "$CHECKPOINT_DIR/latest.pt" ]; then
+        echo "Found existing checkpoint, resuming training from: $CHECKPOINT_DIR/latest.pt"
+        python hybrid/training/train_energy.py \
+            --config "$STREAMING_CONFIG" \
+            --model_dir "$CHECKPOINT_DIR" \
+            --log_dir "$LOG_DIR" \
+            --device cuda \
+            --streaming_mode \
+            --resume_from_checkpoint "$CHECKPOINT_DIR/latest.pt"
+    else
+        echo "No existing checkpoint found, starting fresh training"
+        python hybrid/training/train_energy.py \
+            --config "$STREAMING_CONFIG" \
+            --model_dir "$CHECKPOINT_DIR" \
+            --log_dir "$LOG_DIR" \
+            --device cuda \
+            --streaming_mode
+    fi
 ) &
 
 TRAINING_PID=$!

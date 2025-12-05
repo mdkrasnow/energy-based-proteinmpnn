@@ -35,6 +35,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from hybrid.data import StreamingProteinDataset, PDBCache, PDBManager
+from hybrid.data.vocab import AMINO_ACID_TO_IDX, AMINO_ACID_ALPHABET
 from hybrid.models import EnergyBasedProteinMPNN
 
 # Configure logging
@@ -330,6 +331,65 @@ class StreamingTrainer:
         coordinates = sample['coordinates']
         mask = sample['mask']
         label = sample['label']
+        
+        # Convert sequence string to tensor if needed (fix for string logits error)
+        if isinstance(sequence, str):
+            # CRITICAL FIX: Use canonical ProteinMPNN alphabet from shared vocab module
+            # This fixes the data corruption bug where streaming data uses ProteinMPNN order
+            # but training code was using alphabetical order (ACDEFGHIKLMNPQRSTVWY)
+            aa_to_idx = AMINO_ACID_TO_IDX  # ProteinMPNN standard: ARNDCQEGHILKMFPSTWYV
+            
+            if not sequence:
+                sequence = torch.tensor([], dtype=torch.long, device=self.device)
+            else:
+                # Convert string sequence to indices with logged placeholder mapping
+                indices = []
+                for i, aa in enumerate(sequence):
+                    aa_upper = aa.upper()
+                    if aa_upper in aa_to_idx:
+                        indices.append(aa_to_idx[aa_upper])
+                    else:
+                        # CRITICAL FIX: Map unknown amino acids to Alanine placeholder
+                        # This preserves sequence length and maintains sequence-coordinate alignment
+                        logger.warning(
+                            f"Unknown amino acid '{aa}' at position {i} in sequence, "
+                            f"mapping to Alanine (A) placeholder"
+                        )
+                        indices.append(aa_to_idx['A'])  # Alanine = index 0 in ProteinMPNN order
+                sequence = torch.tensor(indices, dtype=torch.long, device=self.device)
+        
+        # CRITICAL VALIDATION: Ensure sequence-coordinate alignment after conversion
+        # This catches data corruption early with clear error messages
+        if isinstance(sequence, torch.Tensor) and len(sequence.shape) > 0:
+            seq_length = sequence.shape[0]
+            
+            # Validate against coordinates dimensions
+            if coordinates is not None and isinstance(coordinates, torch.Tensor):
+                if len(coordinates.shape) >= 3:  # Expected: [L, atoms, 3] or [B, L, atoms, 3]
+                    coord_length = coordinates.shape[-3]  # Length dimension
+                elif len(coordinates.shape) == 2:  # Simplified: [L, 3]
+                    coord_length = coordinates.shape[0]  # Length dimension
+                else:
+                    coord_length = None  # Skip validation for unexpected shapes
+                
+                if coord_length is not None:
+                    if seq_length != coord_length:
+                        raise ValueError(
+                            f"Sequence-coordinate dimension mismatch: "
+                            f"sequence length {seq_length} != coordinates length {coord_length}. "
+                            f"This indicates data corruption in sequence conversion."
+                        )
+            
+            # Validate against mask dimensions  
+            if mask is not None and isinstance(mask, torch.Tensor):
+                if len(mask.shape) >= 1:  # Expected: [L] or [B, L]
+                    mask_length = mask.shape[-1]  # Length dimension
+                    if seq_length != mask_length:
+                        raise ValueError(
+                            f"Sequence-mask dimension mismatch: "
+                            f"sequence length {seq_length} != mask length {mask_length}. "
+                            f"This indicates data corruption in sequence conversion."
+                        )
         
         # Forward pass through model
         energy_prediction = self.model(sequence, coordinates, mask)
