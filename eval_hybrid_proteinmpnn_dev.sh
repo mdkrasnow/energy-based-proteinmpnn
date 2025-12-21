@@ -227,14 +227,16 @@ mkdir -p "$JOB_SCRATCH/evaluation_results"
 
 # Create minimal dev evaluation config
 DEV_EVAL_CONFIG="$JOB_SCRATCH/dev_evaluation_config.json"
+EVAL_DATA_DIR="$JOB_SCRATCH/evaluation_data"
+EVAL_RESULTS_DIR="$JOB_SCRATCH/evaluation_results"
 
-cat > "$DEV_EVAL_CONFIG" << 'EOF'
+cat > "$DEV_EVAL_CONFIG" << EOF
 {
     "run_performance_analysis": true,
     "run_convergence_analysis": false,
     "run_adaptive_computation_analysis": false,
     "run_landscape_quality_analysis": false,
-    
+
     "max_problems_per_analysis": 10,
     "parallel_analysis": false,
     "memory_limit_gb": 16.0,
@@ -242,22 +244,21 @@ cat > "$DEV_EVAL_CONFIG" << 'EOF'
     "batch_size": 5,
     "enable_input_validation": true,
     "strict_interface_validation": false,
-    
-    "output_directory": "./evaluation_results",
+
+    "output_directory": "$EVAL_RESULTS_DIR",
     "generate_unified_report": true,
     "save_individual_results": true,
     "generate_visualizations": false,
-    "optimization_data_file": "./evaluation_data/optimization_results.json",
-    "benchmark_data_file": "./evaluation_data/baseline_proteinmpnn_results.json",
+    "optimization_data_file": "$EVAL_DATA_DIR/optimization_results.json",
+    "benchmark_data_file": "$EVAL_DATA_DIR/benchmark_problems.json",
 
     "report_format": "json",
     "include_raw_data": false,
     "verbose_logging": true,
-    "fast_dev_run": true,
-    
+
     "performance_config": {
         "max_benchmark_size": 10,
-        "output_dir": "./evaluation_results/performance_analysis",
+        "output_dir": "$EVAL_RESULTS_DIR/performance_analysis",
         "generate_plots": false,
         "compare_to_baseline": false,
         "baseline_success_rate": 0.5,
@@ -266,98 +267,73 @@ cat > "$DEV_EVAL_CONFIG" << 'EOF'
 }
 EOF
 
-# Create evaluation data from real PDB structures (dev version)
-echo "Creating evaluation data from real PDB structures..."
+# ------------------------------------------------------------------------------
+# Generate REAL evaluation data from trained models (NO SYNTHETIC FALLBACK)
+# ------------------------------------------------------------------------------
 
-# Use the same PDB files from repository
+echo "=============================================="
+echo "Generating REAL Evaluation Data"
+echo "=============================================="
+
+# Check if trained models exist from dev training
+TRAINED_MODEL_DIR="$SLURM_SUBMIT_DIR/dev_training_results_latest/checkpoints"
+
+# Also check alternative location
+if [ ! -d "$TRAINED_MODEL_DIR" ]; then
+    # Try to find most recent dev training results
+    LATEST_DEV=$(ls -td "$SLURM_SUBMIT_DIR"/dev_training_results_* 2>/dev/null | head -1)
+    if [ -n "$LATEST_DEV" ] && [ -d "$LATEST_DEV/checkpoints" ]; then
+        TRAINED_MODEL_DIR="$LATEST_DEV/checkpoints"
+        echo "Using trained models from: $TRAINED_MODEL_DIR"
+    fi
+fi
+
+# Discover available PDB files (limit to 5 for dev speed)
 REPO_PDB_INPUTS_DIR="$REPO_DIR/proteinmpnn/inputs"
-
 if [ ! -d "$REPO_PDB_INPUTS_DIR" ]; then
     echo "ERROR: ProteinMPNN inputs directory not found: $REPO_PDB_INPUTS_DIR"
     exit 1
 fi
 
-# Discover available PDB files (limit to 2 for dev speed)
-PDB_FILES=($(find "$REPO_PDB_INPUTS_DIR" -name "*.pdb" -type f | sort | head -2))
+PDB_FILES=($(find "$REPO_PDB_INPUTS_DIR" -name "*.pdb" -type f | sort | head -5))
 
 if [ ${#PDB_FILES[@]} -eq 0 ]; then
     echo "ERROR: No PDB files found for evaluation!"
     exit 1
 fi
 
-echo "Using ${#PDB_FILES[@]} real PDB structures for dev evaluation data"
+echo "Found ${#PDB_FILES[@]} PDB structures for evaluation"
 
-# Create optimization results from real structures
-cat > "$JOB_SCRATCH/evaluation_data/optimization_results.json" << EOF
-[
-$(for i in "${!PDB_FILES[@]}"; do
-    pdb_file="${PDB_FILES[$i]}"
-    filename=$(basename "$pdb_file" .pdb)
-    dirname=$(basename "$(dirname "$pdb_file")")
-    
-    # Use deterministic values based on filename for reproducibility
-    hash_val=$(echo "$filename" | cksum | cut -d' ' -f1)
-    
-    echo "    {"
-    echo "        \"problem_id\": \"$filename\","
-    echo "        \"successful\": $([ $((hash_val % 2)) -eq 0 ] && echo "true" || echo "false"),"
-    echo "        \"design_quality\": $((60 + hash_val % 35)).$(printf "%01d" $((hash_val % 10))),"
-    echo "        \"confidence_score\": $((50 + hash_val % 40)).$(printf "%01d" $(((hash_val + 1) % 10))),"
-    echo "        \"computation_time\": $((20 + hash_val % 30)).$(printf "%01d" $(((hash_val + 2) % 10))),"
-    echo "        \"problem_info\": {"
-    echo "            \"difficulty\": \"$([ $((hash_val % 3)) -eq 0 ] && echo "easy" || [ $((hash_val % 3)) -eq 1 ] && echo "medium" || echo "hard")\","
-    echo "            \"pdb_file\": \"$pdb_file\","
-    echo "            \"category\": \"$dirname\""
-    echo "        },"
-    echo "        \"optimization_result\": {"
-    echo "            \"converged\": $([ $((hash_val % 4)) -ne 3 ] && echo "true" || echo "false"),"
-    echo "            \"total_steps_used\": $((30 + hash_val % 80)),"
-    echo "            \"adaptive_extensions_count\": $((hash_val % 3))"
-    echo "        }"
-    if [ $i -lt $((${#PDB_FILES[@]} - 1)) ]; then
-        echo "    },"
-    else
-        echo "    }"
-    fi
-done)
-]
-EOF
+# Use real-only data generation (NO fallback to synthetic)
+source "$REPO_DIR/scripts/generate_eval_data_real_only.sh"
 
-# Create baseline results from real structures
-cat > "$JOB_SCRATCH/evaluation_data/baseline_proteinmpnn_results.json" << EOF
-[
-$(for i in "${!PDB_FILES[@]}"; do
-    pdb_file="${PDB_FILES[$i]}"
-    filename=$(basename "$pdb_file" .pdb)
-    dirname=$(basename "$(dirname "$pdb_file")")
-    
-    # Use deterministic values for baseline
-    hash_val=$(echo "baseline_$filename" | cksum | cut -d' ' -f1)
-    
-    echo "    {"
-    echo "        \"problem_id\": \"$filename\","
-    echo "        \"successful\": $([ $((hash_val % 3)) -ne 0 ] && echo "true" || echo "false"),"
-    echo "        \"design_quality\": $((40 + hash_val % 30)).$(printf "%01d" $((hash_val % 10))),"
-    echo "        \"confidence_score\": $((30 + hash_val % 40)).$(printf "%01d" $(((hash_val + 1) % 10))),"
-    echo "        \"difficulty\": \"$([ $((hash_val % 3)) -eq 0 ] && echo "easy" || [ $((hash_val % 3)) -eq 1 ] && echo "medium" || echo "hard")\","
-    echo "        \"category\": \"$dirname\","
-    echo "        \"pdb_file\": \"$pdb_file\""
-    if [ $i -lt $((${#PDB_FILES[@]} - 1)) ]; then
-        echo "    },"
-    else
-        echo "    }"
-    fi
-done)
-]
-EOF
+# Set maximum structures for dev evaluation
+export MAX_EVAL_STRUCTURES=5
 
-echo "✓ Created evaluation data from ${#PDB_FILES[@]} real PDB structures"
+# Generate REAL evaluation data - FAILS if models unavailable
+generate_real_eval_data "$TRAINED_MODEL_DIR" "$JOB_SCRATCH/evaluation_data" "${PDB_FILES[@]}"
 
-# Update config paths
-EVAL_RESULTS_DIR="$JOB_SCRATCH/evaluation_results"
-sed -i "s|\"output_directory\": \"./evaluation_results\"|\"output_directory\": \"$EVAL_RESULTS_DIR\"|" "$DEV_EVAL_CONFIG"
+DATA_GEN_EXIT=$?
+if [ $DATA_GEN_EXIT -ne 0 ]; then
+    echo ""
+    echo "==========================================="
+    echo "❌ DEV EVALUATION FAILED"
+    echo "==========================================="
+    echo "Cannot generate real evaluation data."
+    echo ""
+    echo "This dev evaluation requires:"
+    echo "  1. Trained model checkpoints from dev training"
+    echo "  2. Models must be trained (not just initialized)"
+    echo "  3. PyTorch environment properly configured"
+    echo ""
+    echo "Please ensure dev training completed successfully first."
+    echo "Expected model location: $TRAINED_MODEL_DIR"
+    echo "==========================================="
+    exit 1
+fi
 
-echo "✓ Created minimal evaluation setup"
+echo "✓ Real evaluation data ready"
+echo ""
 
 # ------------------------------------------------------------------------------
 # 7. Quick evaluation run with timeout

@@ -18,7 +18,7 @@ ssh -MNf \
 echo "Creating remote directories and running SCP transfers using shared connection..."
 
 # Create necessary directories on remote server
-ssh -o ControlPath="${CTRL_PATH}" "${REMOTE}" "mkdir -p hybrid_evaluation hybrid_training"
+ssh -o ControlPath="${CTRL_PATH}" "${REMOTE}" "mkdir -p hybrid_evaluation hybrid_training scripts"
 
 # Copy main training and evaluation Python scripts
 scp -o ControlPath="${CTRL_PATH}" hybrid/evaluation/run_comprehensive_evaluation.py "${REMOTE}:~/hybrid_evaluation/run_comprehensive_evaluation.py"
@@ -28,6 +28,11 @@ scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy.py "${REMOTE}:~/h
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy_streaming.py "${REMOTE}:~/hybrid_training/train_energy_streaming.py"
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/config_streaming.json "${REMOTE}:~/hybrid_training/config_streaming.json"
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/config_dev.json "${REMOTE}:~/hybrid_training/config_dev.json"
+scp -o ControlPath="${CTRL_PATH}" hybrid/training/config_production.json "${REMOTE}:~/hybrid_training/config_production.json"
+
+# Copy evaluation data generation scripts (real-only, no fallback)
+scp -o ControlPath="${CTRL_PATH}" scripts/generate_real_eval_data.py "${REMOTE}:~/scripts/generate_real_eval_data.py"
+scp -o ControlPath="${CTRL_PATH}" scripts/generate_eval_data_real_only.sh "${REMOTE}:~/scripts/generate_eval_data_real_only.sh"
 
 # Copy SLURM job scripts
 scp -o ControlPath="${CTRL_PATH}" train_hybrid_proteinmpnn_dev.sh "${REMOTE}:~/train_hybrid_proteinmpnn_dev.sh"

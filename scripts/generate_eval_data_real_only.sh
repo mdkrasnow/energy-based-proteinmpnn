@@ -98,16 +98,38 @@ EOF
     echo "✓ Found $MODEL_COUNT trained model file(s)"
 
     # Check 3: Python script exists
-    local GEN_SCRIPT="$(dirname "$0")/generate_real_eval_data.py"
+    # Use BASH_SOURCE for correct path when sourced, fallback to relative search
+    if [ -n "${BASH_SOURCE[0]}" ]; then
+        local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        local GEN_SCRIPT="$SCRIPT_DIR/generate_real_eval_data.py"
+    else
+        local GEN_SCRIPT="$(dirname "$0")/generate_real_eval_data.py"
+    fi
+
+    # Also check repository location if not found
+    if [ ! -f "$GEN_SCRIPT" ] && [ -n "$REPO_DIR" ]; then
+        GEN_SCRIPT="$REPO_DIR/scripts/generate_real_eval_data.py"
+    fi
+
+    # Also check home directory scripts folder
     if [ ! -f "$GEN_SCRIPT" ]; then
-        echo "❌ FATAL ERROR: Real data generation script not found: $GEN_SCRIPT"
+        GEN_SCRIPT="$HOME/scripts/generate_real_eval_data.py"
+    fi
+
+    if [ ! -f "$GEN_SCRIPT" ]; then
+        echo "❌ FATAL ERROR: Real data generation script not found"
         echo ""
-        echo "Please ensure scripts/generate_real_eval_data.py exists"
+        echo "Searched locations:"
+        echo "  - ${SCRIPT_DIR:-<not set>}/generate_real_eval_data.py"
+        echo "  - $REPO_DIR/scripts/generate_real_eval_data.py"
+        echo "  - $HOME/scripts/generate_real_eval_data.py"
+        echo ""
+        echo "Please ensure scripts/generate_real_eval_data.py exists in repository"
         echo ""
         return 1
     fi
 
-    echo "✓ Real data generation script available"
+    echo "✓ Real data generation script available: $GEN_SCRIPT"
 
     # Check 4: PyTorch available
     if ! timeout 10 python -c "import torch; import numpy" 2>/dev/null; then
