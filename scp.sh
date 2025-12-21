@@ -27,6 +27,7 @@ scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy.py "${REMOTE}:~/h
 # Copy streaming training files
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/train_energy_streaming.py "${REMOTE}:~/hybrid_training/train_energy_streaming.py"
 scp -o ControlPath="${CTRL_PATH}" hybrid/training/config_streaming.json "${REMOTE}:~/hybrid_training/config_streaming.json"
+scp -o ControlPath="${CTRL_PATH}" hybrid/training/config_dev.json "${REMOTE}:~/hybrid_training/config_dev.json"
 
 # Copy SLURM job scripts
 scp -o ControlPath="${CTRL_PATH}" train_hybrid_proteinmpnn_dev.sh "${REMOTE}:~/train_hybrid_proteinmpnn_dev.sh"

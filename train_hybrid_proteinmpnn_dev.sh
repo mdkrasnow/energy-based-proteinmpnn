@@ -187,20 +187,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 
 # Quick GPU check with timeout
 echo "Checking GPU availability..."
-timeout 30 python -c "
-import torch
-print(f'CUDA available: {torch.cuda.is_available()}')
-if torch.cuda.is_available():
-    print(f'GPU count: {torch.cuda.device_count()}')
-    for i in range(torch.cuda.device_count()):
-        props = torch.cuda.get_device_properties(i)
-        memory_gb = props.total_memory / (1024**3)
-        print(f'GPU {i}: {props.name}, {memory_gb:.1f}GB memory')
-        if memory_gb < 4:
-            raise RuntimeError(f'GPU {i} has insufficient memory: {memory_gb:.1f}GB < 4GB')
-else:
-    raise RuntimeError('CUDA not available')
-" || {
+timeout 30 python hybrid/evaluation/validate_gpu.py || {
     echo "ERROR: GPU validation failed"
     exit 1
 }

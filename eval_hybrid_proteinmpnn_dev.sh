@@ -212,12 +212,7 @@ timeout 240 pip install --user -q torch torchvision torchaudio numpy pandas matp
 }
 
 # Quick GPU check
-timeout 30 python -c "
-import torch
-print(f'CUDA available: {torch.cuda.is_available()}')
-if not torch.cuda.is_available():
-    raise RuntimeError('CUDA not available')
-" || {
+timeout 30 python hybrid/evaluation/validate_gpu.py || {
     echo "ERROR: GPU validation failed"
     exit 1
 }
@@ -252,11 +247,12 @@ cat > "$DEV_EVAL_CONFIG" << 'EOF'
     "generate_unified_report": true,
     "save_individual_results": true,
     "generate_visualizations": false,
-    
+    "optimization_data_file": "./evaluation_data/optimization_results.json",
+    "benchmark_data_file": "./evaluation_data/baseline_proteinmpnn_results.json",
+
     "report_format": "json",
     "include_raw_data": false,
     "verbose_logging": true,
-    "debug_mode": true,
     "fast_dev_run": true,
     
     "performance_config": {

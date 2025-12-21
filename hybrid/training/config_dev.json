@@ -8,9 +8,9 @@
         "negative_methods": ["random"],
         "max_sequence_length": 200,
         "min_sequence_length": 20,
-        "val_split": 0.3,
+        "val_split": 0.2,
         "lazy_loading": true,
-        "max_files_debug": 4,
+        "max_files_debug": 10,
         "structure_extensions": [".pdb"],
         "include_subdirectories": false
     },
@@ -62,7 +62,7 @@
     
     "training": {
         "max_epochs": 3,
-        "batch_size": 4,
+        "batch_size": 2,
         "num_workers": 2,
         "max_grad_norm": 1.0,
         "patience": 5,
