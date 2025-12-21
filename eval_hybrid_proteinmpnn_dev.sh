@@ -202,6 +202,10 @@ module load cuda/12.2.0-fasrc01 || {
     exit 1
 }
 
+# Set up PYTHONPATH to include project modules
+export PYTHONPATH="$(pwd)/proteinmpnn:$(pwd):$(pwd)/hybrid${PYTHONPATH:+:${PYTHONPATH}}"
+echo "Updated PYTHONPATH: $PYTHONPATH"
+
 export PATH="$HOME/.local/bin:$PATH"
 
 # Quick install of minimal dependencies
